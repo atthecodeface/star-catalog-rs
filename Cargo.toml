@@ -10,7 +10,7 @@ documentation = "https://docs.rs/star-catalog"
 keywords = ["astronomy", "star", "catalog"]
 categories = ["science"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/atthecodeface/geo-nd-rs"
+repository = "https://github.com/atthecodeface/star-catalog-rs"
 
 [dependencies.serde_json]
 version = "1.0.125"
