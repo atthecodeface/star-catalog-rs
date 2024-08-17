@@ -80,8 +80,8 @@ impl Subcube {
     const ELE_PER_SIDE2: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
     pub const NUM_SUBCUBES: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
 
-    pub const SUBCUBE_SIZE: f32 = 2.0 / Self::ELE_PER_SIDE as f32;
-    pub const SUBCUBE_RADIUS: f32 = 1.7321 * (Self::SUBCUBE_SIZE / 2.0);
+    pub const SUBCUBE_SIZE: f64 = 2.0 / Self::ELE_PER_SIDE as f64;
+    pub const SUBCUBE_RADIUS: f64 = 1.7321 * (Self::SUBCUBE_SIZE / 2.0);
 
     //fi delta
     const fn delta(b: usize) -> isize {
@@ -126,15 +126,15 @@ impl Subcube {
     /// Get the subcube index of a coordinate
     ///
     /// The coordinate must be in the range -1. to 1.
-    fn index_of_coord(c: f32) -> usize {
+    fn index_of_coord(c: f64) -> usize {
         let c = c.min(1.);
-        ((c + 1.0).abs() * (Self::ELE_PER_SIDE as f32) / 2.0 * 0.999_999).floor() as usize
+        ((c + 1.0).abs() * (Self::ELE_PER_SIDE as f64) / 2.0 * 0.999_999).floor() as usize
     }
 
     //fi coord_of_index
     /// Get the coordinate of the centre of an index
-    fn coord_of_index(i: usize) -> f32 {
-        (2 * i + 1) as f32 / Self::ELE_PER_SIDE as f32 - 1.0
+    fn coord_of_index(i: usize) -> f64 {
+        (2 * i + 1) as f64 / Self::ELE_PER_SIDE as f64 - 1.0
     }
 
     pub fn of_vector(v: &Vec3) -> Self {
@@ -200,7 +200,7 @@ impl Subcube {
         }
     }
 
-    pub fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f32> {
+    pub fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f64> {
         let c = self.center();
         let r = c.length();
         if r < 1.0 - Self::SUBCUBE_RADIUS {

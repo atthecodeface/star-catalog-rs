@@ -25,8 +25,8 @@ pub struct StarSerialized(
     /// Id (e.g. Hipparcos number
     usize,
     /// Right-ascension, declination in radians
-    f32,
-    f32,
+    f64,
+    f64,
     /// Distance in light years
     f32,
     /// Visual magnitude and color (B-V)
@@ -40,14 +40,13 @@ pub struct StarSerialized(
 #[serde(from = "StarSerialized", into = "StarSerialized")]
 pub struct Star {
     id: usize,
-    ra: f32,
-    de: f32,
+    ra: f64,
+    de: f64,
     ly: f32,
     vmag: f32,
     bv: f32,
     vector: Vec3,
     subcube: Subcube,
-    neighbors: Vec<(f32, usize)>,
 }
 
 //ip From<Star> for StarSerialized
@@ -68,7 +67,7 @@ impl From<StarSerialized> for Star {
 impl Star {
     //fi vec_of_ra_de
     /// Calculate a unit vector from a right ascension and declination
-    pub fn vec_of_ra_de(ra: f32, de: f32) -> Vec3 {
+    pub fn vec_of_ra_de(ra: f64, de: f64) -> Vec3 {
         let vx = ra.cos() * de.cos();
         let vy = ra.sin() * de.cos();
         let vz = de.sin();
@@ -101,8 +100,7 @@ impl Star {
 
     //cp new
     /// Create a new [Star] given its details
-    pub fn new(id: usize, ra: f32, de: f32, ly: f32, vmag: f32, bv: f32) -> Self {
-        let neighbors = vec![];
+    pub fn new(id: usize, ra: f64, de: f64, ly: f32, vmag: f32, bv: f32) -> Self {
         let vector = Self::vec_of_ra_de(ra, de);
         let subcube = Subcube::of_vector(&vector);
         Self {
@@ -114,27 +112,12 @@ impl Star {
             bv,
             vector,
             subcube,
-            neighbors,
         }
     }
 
     //mp cos_angle_to
     /// Get the cosine of the angle between this [Star] and another
-    pub fn cos_angle_between(&self, other: &Star) -> f32 {
+    pub fn cos_angle_between(&self, other: &Star) -> f64 {
         self.vector.dot(&other.vector)
-    }
-
-    //mp clear_neighbors
-    /// Clear the neighbors; this must be invoked if the stars are
-    /// renumbered in a Catalog
-    pub fn clear_neighbors(&mut self) {
-        self.neighbors.clear();
-    }
-
-    //mp add_neighbor
-    /// Add a neighbor (index) to the list for this star, with the cosine of
-    /// the angle between them
-    pub fn add_neighbor(&mut self, cos_angle: f32, other: usize) {
-        self.neighbors.push((cos_angle, other));
     }
 }

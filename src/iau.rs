@@ -236,7 +236,8 @@ pub const NAMES_AND_RA_DE: &[(&str, Option<usize>, f64, f64)] = &[
     ("Chara", Some(61317), 188.435603, 41.357479),
     ("Chertan", Some(54879), 168.560019, 15.429571),
     ("Copernicus", Some(43587), 133.149212, 28.330820),
-    ("Cor Caroli", Some(63121), 194.006943, 38.318376),
+    // Note tthat Cor Caroli is a binary star with HIP 63121
+    ("Cor Caroli", Some(63125), 194.006943, 38.318376),
     ("Cujam", Some(80463), 246.353979, 14.033274),
     ("Cursa", Some(23875), 76.962440, -5.086446),
     ("Dabih", Some(100345), 305.252803, -14.781405),

@@ -60,10 +60,10 @@ struct Record {
     hip: Option<usize>,
     /// Right ascension in degrees
     #[serde(rename = "RAdeg")]
-    ra: Option<f32>,
+    ra: Option<f64>,
     /// Declination in degrees
     #[serde(rename = "DEdeg")]
-    de: Option<f32>,
+    de: Option<f64>,
     /// Parallax
     #[serde(rename = "Plx")]
     plx: Option<f32>,
@@ -106,8 +106,8 @@ pub fn read_to_catalog<R: std::io::Read>(
                 continue;
             }
             let hip = record.hip.unwrap();
-            let ra = record.ra.unwrap() / 180.0 * std::f32::consts::PI;
-            let de = record.de.unwrap() / 180.0 * std::f32::consts::PI;
+            let ra = record.ra.unwrap() / 180.0 * std::f64::consts::PI;
+            let de = record.de.unwrap() / 180.0 * std::f64::consts::PI;
             let ly = 3.26156E3 / record.plx.unwrap();
             let ly = if ly.is_normal() { ly } else { 0.0 };
             let b_v = record.b_v.unwrap();

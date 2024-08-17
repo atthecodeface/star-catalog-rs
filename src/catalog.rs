@@ -58,9 +58,6 @@ impl Catalog {
     }
     fn clear_derived_data(&mut self) {
         if self.has_derived_data() {
-            for s in self.stars.iter_mut() {
-                s.clear_neighbors();
-            }
             self.subcubes.clear();
         }
     }
@@ -123,7 +120,7 @@ impl Catalog {
     }
 
     /// Find the closest star in the catalog given an RA and DE in radians
-    pub fn closest_to(&self, ra: f32, de: f32) -> Option<(f32, usize)> {
+    pub fn closest_to(&self, ra: f64, de: f64) -> Option<(f64, usize)> {
         assert!(
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"

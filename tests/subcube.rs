@@ -19,7 +19,7 @@ fn test_on_sphere() -> Result<(), Box<dyn Error>> {
     for x in [-1, 1] {
         for y in [-1, 1] {
             for z in [-1, 1] {
-                deltas.push([delta * x as f32, delta * y as f32, delta * z as f32].into());
+                deltas.push([delta * x as f64, delta * y as f64, delta * z as f64].into());
             }
         }
     }
@@ -39,7 +39,7 @@ fn test_on_sphere() -> Result<(), Box<dyn Error>> {
         let d = (l - 1.0).abs();
 
         // may be on sphere does some sandbagging hence 1.001
-        if d > 1.001 * (3.0_f32).sqrt() / Subcube::ELE_PER_SIDE as f32 {
+        if d > 1.001 * (3.0_f64).sqrt() / Subcube::ELE_PER_SIDE as f64 {
             assert!(
                 !m,
                 "Subcube {xyz:?} {c} {l} with l min/max of {l_min} {l_max} should not possibly be on sphere"

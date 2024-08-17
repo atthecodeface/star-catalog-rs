@@ -57,19 +57,19 @@ fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-type Vec2 = geo_nd::FArray<f32, 2>;
+type Vec2 = geo_nd::FArray<f64, 2>;
 struct Camera {
     width: usize,
     height: usize,
     cx: usize,
     cy: usize,
-    mm_per_px_x: f32,
-    mm_per_px_y: f32,
-    focal_length: f32,
+    mm_per_px_x: f64,
+    mm_per_px_y: f64,
+    focal_length: f64,
 }
 
-// fn degrees(a: f32) -> f32 {
-//    a * 180.0 / std::f32::consts::PI
+// fn degrees(a: f64) -> f64 {
+//    a * 180.0 / std::f64::consts::PI
 // }
 
 impl Camera {
@@ -78,8 +78,8 @@ impl Camera {
         let height = 3456;
         let cx = width / 2;
         let cy = height / 2;
-        let mm_per_px_x = 22.3 / width as f32;
-        let mm_per_px_y = 14.9 / height as f32;
+        let mm_per_px_x = 22.3 / width as f64;
+        let mm_per_px_y = 14.9 / height as f64;
         let focal_length = 50.0 * 1.038; //  * 1.03;
         Self {
             width,
@@ -98,10 +98,10 @@ impl Camera {
         self.height
     }
     fn within_frame(&self, v: Vec2) -> Option<(usize, usize)> {
-        if v[0] < 0. || v[0] >= self.width as f32 {
+        if v[0] < 0. || v[0] >= self.width as f64 {
             return None;
         }
-        if v[1] < 0. || v[1] >= self.height as f32 {
+        if v[1] < 0. || v[1] >= self.height as f64 {
             return None;
         }
         Some((v[0] as usize, v[1] as usize))
@@ -110,15 +110,15 @@ impl Camera {
     fn pxy_of_vec(&self, v: &Vec3) -> Vec2 {
         let tx = v[0];
         let ty = v[1];
-        let x = self.cx as f32 + (tx * self.focal_length / self.mm_per_px_x);
-        let y = self.cy as f32 - (ty * self.focal_length / self.mm_per_px_y);
+        let x = self.cx as f64 + (tx * self.focal_length / self.mm_per_px_x);
+        let y = self.cy as f64 - (ty * self.focal_length / self.mm_per_px_y);
         [x, y].into()
     }
 
     fn vec_of_pxy(&self, xy: &Vec2) -> Vec3 {
         //  Get x and y as offsets in mm on frame
-        let x = (xy[0] - (self.cx as f32)) * self.mm_per_px_x;
-        let y = (self.cy as f32 - xy[1]) * self.mm_per_px_y;
+        let x = (xy[0] - (self.cx as f64)) * self.mm_per_px_x;
+        let y = (self.cy as f64 - xy[1]) * self.mm_per_px_y;
         //     Lens is at focal length, so tan(angle) is x / f or y/f
         let tx = x / self.focal_length;
         let ty = y / self.focal_length;
@@ -156,9 +156,9 @@ impl Camera {
         let star_comp = catalog.find_name(comp).unwrap();
         let star_comp = catalog.star(star_comp);
         let (x, y) = &data[comp];
-        let vector_comp = self.vec_of_pxy(&[*x as f32, *y as f32].into());
+        let vector_comp = self.vec_of_pxy(&[*x as f64, *y as f64].into());
         for (name, pxy) in data {
-            let vector_name = self.vec_of_pxy(&[pxy.0 as f32, pxy.1 as f32].into());
+            let vector_name = self.vec_of_pxy(&[pxy.0 as f64, pxy.1 as f64].into());
             if *name != comp {
                 let star_name = catalog.find_name(name).unwrap();
                 let star_name = catalog.star(star_name);
@@ -200,7 +200,7 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     for (name, pxy) in &x {
         let star_name = catalog.find_name(name).unwrap();
         let star_name = catalog.star(star_name);
-        // let v = camera.vec_of_pxy(&[pxy.0 as f32, pxy.1 as f32].into());
+        // let v = camera.vec_of_pxy(&[pxy.0 as f64, pxy.1 as f64].into());
         let v = avg.apply3(&star_name.vector());
         let xy = camera.pxy_of_vec(&v);
         eprintln!("{name} {xy} {pxy:?}");
