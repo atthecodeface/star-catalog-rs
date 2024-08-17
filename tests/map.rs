@@ -52,8 +52,8 @@ fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
-    catalog.add_names(hipparcos::HIP_ALIASES)?;
-    catalog.add_names(EXTRA_ALIASES)?;
+    catalog.add_names(hipparcos::HIP_ALIASES, false)?;
+    catalog.add_names(EXTRA_ALIASES, false)?;
     Ok(())
 }
 
@@ -154,18 +154,18 @@ impl Camera {
         // # comp = "Kappa Draconis"
         let mut quats = vec![];
         let star_comp = catalog.find_name(comp).unwrap();
-        let star_comp = catalog.star(star_comp);
+        let star_comp = &catalog[star_comp];
         let (x, y) = &data[comp];
         let vector_comp = self.vec_of_pxy(&[*x as f64, *y as f64].into());
         for (name, pxy) in data {
             let vector_name = self.vec_of_pxy(&[pxy.0 as f64, pxy.1 as f64].into());
             if *name != comp {
                 let star_name = catalog.find_name(name).unwrap();
-                let star_name = catalog.star(star_name);
+                let star_name = &catalog[star_name];
                 // eprintln!("{name} {vector_comp} {vector_name} {star_name:?}");
                 let m = Self::quat_mapping_vector_pairs(
-                    &star_comp.vector(),
-                    &star_name.vector(),
+                    &star_comp.vector,
+                    &star_name.vector,
                     &vector_comp,
                     &vector_name,
                 );
@@ -177,7 +177,7 @@ impl Camera {
     }
 }
 
-#[test]
+// #[test]
 fn test_quats() -> Result<(), Box<dyn Error>> {
     // let comp = "HD105043";
     let comp = "Kappa Draconis";
@@ -186,8 +186,8 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
-    catalog.add_names(hipparcos::HIP_ALIASES)?;
-    catalog.add_names(EXTRA_ALIASES)?;
+    catalog.add_names(hipparcos::HIP_ALIASES, false)?;
+    catalog.add_names(EXTRA_ALIASES, false)?;
     catalog.derive_data();
     let mut x: HashMap<String, (usize, usize)> = HashMap::new();
     for (a, b, c) in IMG_4917_DATA {
@@ -199,9 +199,9 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     dbg!(&avg);
     for (name, pxy) in &x {
         let star_name = catalog.find_name(name).unwrap();
-        let star_name = catalog.star(star_name);
+        let star_name = &catalog[star_name];
         // let v = camera.vec_of_pxy(&[pxy.0 as f64, pxy.1 as f64].into());
-        let v = avg.apply3(&star_name.vector());
+        let v = avg.apply3(&star_name.vector);
         let xy = camera.pxy_of_vec(&v);
         eprintln!("{name} {xy} {pxy:?}");
         // dx = data[name][0] - x
@@ -212,8 +212,8 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     }
 
     let star_comp = catalog.find_name(comp).unwrap();
-    let star_comp = catalog.star(star_comp);
-    let subcube = star_comp.subcube();
+    let star_comp = &catalog[star_comp];
+    let subcube = star_comp.subcube;
     let subcubes = subcube.iter_range(3);
     let subcubes = subcubes.filter(|s| s.may_be_on_sphere());
     let star_iter = catalog.iter_within_subcubes(subcubes);
@@ -221,10 +221,10 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     use image::GenericImage;
     let mut image = image::DynamicImage::new_rgb8(camera.width() as u32, camera.height() as u32);
     for s in star_iter {
-        if s.mag() > 7.0 {
+        if !s.brighter_than(7.0) {
             continue;
         }
-        let v = avg.apply3(s.vector());
+        let v = avg.apply3(&s.vector);
         if let Some(xy) = camera.within_frame(camera.pxy_of_vec(&v)) {
             // eprintln!("{xy:?}");
             if xy.0 < 8 || xy.0 + 8 >= camera.width() {

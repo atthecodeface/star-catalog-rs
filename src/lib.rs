@@ -18,7 +18,7 @@
 //!
 //! There is no standard naming for stars; however, the IAU has some
 //! standard names, and the [iau] module includes the naming from
-//! https://www.iau.org/public/themes/naming_stars - for those
+//! <https://www.iau.org/public/themes/naming_stars> - for those
 //! approved up to Jan 2021. This database includes the IAU right
 //! ascension and declination, which is used tto find the closest star
 //! in the Hipparcos database. Note thtata some IAU named stars are
@@ -38,9 +38,9 @@
 //! of each star must be unique within a catalog (so it can be used
 //! for identifying a specific star).
 //!
-//! Each star maintains a
-//! unit vector in its direction, which can be viewed as placing the
-//! star on the unit sphere centered on the origin.
+//! Each star maintains a unit vector in its direction, which can be
+//! viewed as placing the star on the unit sphere centered on the
+//! origin.
 //!
 //! A catalog is a collection of stars, with optional names; its
 //! supports indexing and searching by id or name, and by geometry.
@@ -86,6 +86,77 @@
 //! star (which the [Vec3] type provides) is held with f64
 //! components.
 //!
+//! # How to use
+//!
+//! First, create a catalog. Usually a catalog is loaded from a file:
+//!
+//! ```rust,ignore
+//!    let s = std::fs::read_to_string("hipparcos.json")?;
+//!    let mut catalog: Catalog = serde_json::from_str(&s)?;
+//! ```
+//!
+//! Before adding names the catalog must be sorted; the names will
+//! refer to *sorted* entries in the catalog (this restriction will be
+//! removed in the future, just not yet)
+//!
+//! ```rust,ignore
+//!    catalog.sort();
+//! ```
+//!
+//! Stars in the catalog can then be named; this applies names to the *id*s of {Star]s in the catalog.
+//!
+//! (The aliases in hipparcos::HIP_ALIASES are somewhat developer-specified...)
+//!
+//! ```rust,ignore
+//!    catalog.add_names(hipparcos::HIP_ALIASES)?;
+//! ```
+//!
+//! Before performing geometric searching
+//!
+//! ```rust,ignore
+//!    catalog.derive_data();
+//! ```
+//!
+//! Find a star by id
+//!
+//! ```rust,ignore
+//!   let polaris : CatalogIndex = catalog.find_sorted(11767).expect("Should have found Polaris");
+//! ```
+//!
+//! Find a star by name
+//!
+//! ```rust,ignore
+//!   let polaris_by_name = catalog.find_name("Polaris").expect("Should have found Polaris");
+//!   assert_eq!(catalog[polaris_by_name].id(), 111767);
+//! ```
+//!
+//! Find a star closest to a right-ascension and declination (and
+//! return the cosine of the angle offset)§
+//!
+//! ```rust,ignore
+//!   let (_,polaris_by_ra_de) = catalog.closest_to(0.66, 1.555).expect("Should have found Polaris");
+//!   assert_eq!(catalog[polaris_by_ra_de].id(), 111767);
+//! ```
+//!
+//! # A full-blown example
+//!
+//! ```rust
+//!    use star_catalog::{hipparcos, Catalog, CatalogIndex};
+//!
+//! # fn main() -> Result<(),Box<dyn std::error::Error>> {
+//!    let s = std::fs::read_to_string("hipparcos.json")?;
+//!    let mut catalog: Catalog = serde_json::from_str(&s)?;
+//!    catalog.sort();
+//!    catalog.add_names(hipparcos::HIP_ALIASES, true)?;
+//!    catalog.derive_data();
+//!    let polaris : CatalogIndex = catalog.find_sorted(11767).expect("Should have found Polaris");
+//!    let polaris_by_name = catalog.find_name("Polaris").expect("Should have found Polaris");
+//!    assert_eq!(catalog[polaris_by_name].id, 11767);
+//!    let (_,polaris_by_ra_de) = catalog.closest_to(0.66, 1.555).expect("Should have found Polaris");
+//!    assert_eq!(catalog[polaris_by_ra_de].id, 11767);
+//! # Ok(())
+//! # }
+//! ```
 
 pub type Vec3 = geo_nd::FArray<f64, 3>;
 pub type Vec4 = geo_nd::FArray<f64, 4>;
@@ -100,4 +171,4 @@ pub use star::Star;
 mod catalog;
 pub mod hipparcos;
 pub mod iau;
-pub use catalog::Catalog;
+pub use catalog::{Catalog, CatalogIndex};

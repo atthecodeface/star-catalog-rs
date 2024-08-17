@@ -1,3 +1,14 @@
+//!
+//! # Hipparcos data
+//!
+//! The Hipparcos catalog is available as 'hipparcos-voidmain.csv';
+//! this library provides a means for reading that in and creating a
+//! [Catalog] from it.
+//!
+//! This also provides a small HIP_ALIASES constant that maps some
+//! Hipparcos stars to common names.
+//!
+
 //a Imports
 use crate::{Catalog, Star};
 
@@ -118,6 +129,7 @@ pub fn read_to_catalog<R: std::io::Read>(
     Ok(())
 }
 
+//cp HIP_ALIASES
 /// Aliases of HIP identifiers to common names of stars
 pub const HIP_ALIASES: &[(usize, &str)] = &[
     (677, "Alpheratz"),

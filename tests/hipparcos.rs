@@ -11,7 +11,7 @@ use star_catalog::{hipparcos, Catalog};
 //     hipparcos::read_to_catalog(&mut catalog, &f, 116.0)?;
 //     drop(f);
 //     let mut f = std::fs::File::create("hipparcos.json")?;
-//     let s = serde_json::to_string(&catalog)?;
+//     let s = serde_json::to_string_pretty(&catalog)?.replace(" ", "");
 //     f.write(s.as_bytes())?;
 //     Ok(())
 // }
@@ -22,6 +22,6 @@ fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
-    catalog.add_names(hipparcos::HIP_ALIASES)?;
+    catalog.add_names(hipparcos::HIP_ALIASES, false)?;
     Ok(())
 }

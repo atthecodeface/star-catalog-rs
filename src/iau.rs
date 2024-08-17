@@ -1,3 +1,21 @@
+//!
+//! # IAU data
+//!
+//! The IAU has some approved star names, in
+//! <https://www.iau.org/public/themes/naming_stars>
+//!
+//! This provides that data as name, right ascension, and declination
+//! (in degrees) *and* the Hipparcos number for the star (if there is
+//! one).
+//!
+//! Note that some stars are binaries, and as such should have more
+//! than one Hipparcos number.
+//!
+
+//cp NAMES_AND_RA_DE
+/// This is a list of IAU names (as approved by Jan 2021) and the
+/// associated right ascension and declinations, plus a Hipparcos
+/// number if the star corresponds to a star in the Hipparcos catalog.
 pub const NAMES_AND_RA_DE: &[(&str, Option<usize>, f64, f64)] = &[
     ("Absolutno", None, 116.716506, 39.094572),
     ("Alasia", Some(90004), 275.457428, -11.922682),

@@ -13,7 +13,7 @@ fn test_iau() -> Result<(), Box<dyn Error>> {
         let ra = (*ra as f64) / 180.0 * std::f64::consts::PI;
         let de = (*de as f64) / 180.0 * std::f64::consts::PI;
         let (c, star) = catalog.closest_to(ra, de).unwrap();
-        let found_id = catalog.star(star).id();
+        let found_id = catalog[star].id;
         if let Some(iau_id) = *opt_id {
             assert!(
                 iau_id == found_id,

@@ -35,24 +35,49 @@ pub struct StarSerialized(
 );
 
 //tp Star
-/// A star record (which is roughly 64 bytes)
+/// A description of a star, usually in a Catalog
+///
+/// This is optimized to fit within 64 bytes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(from = "StarSerialized", into = "StarSerialized")]
 pub struct Star {
-    id: usize,
-    ra: f64,
-    de: f64,
-    ly: f32,
-    vmag: f32,
-    bv: f32,
-    vector: Vec3,
-    subcube: Subcube,
+    /// User-specified id that is used for reference, indexing and
+    /// searching.
+    ///
+    /// This must be unique for each star in a catalog. It
+    /// is provided as a 'usize' as this is commonly a number, and it
+    /// provides for simple serialization and deserialization of the
+    /// [Star].
+    pub id: usize,
+
+    /// The right ascension of the star in radians
+    pub ra: f64,
+
+    /// The declination of the star in radians
+    pub de: f64,
+
+    /// The approximate distance to the star in lightyears
+    pub ly: f32,
+
+    /// The apparent magnitude of the star
+    pub mag: f32,
+
+    /// The blue-violet value for the star (a means to provide some
+    /// color, type, or temperature for the star)
+    pub bv: f32,
+
+    /// A unit vector in the direction (hence a vector on the unit
+    /// sphere)
+    pub vector: Vec3,
+
+    /// The subcube that the star's positon on the unit sphere lies within
+    pub subcube: Subcube,
 }
 
 //ip From<Star> for StarSerialized
 impl From<Star> for StarSerialized {
     fn from(star: Star) -> StarSerialized {
-        StarSerialized(star.id, star.ra, star.de, star.ly, star.vmag, star.bv)
+        StarSerialized(star.id, star.ra, star.de, star.ly, star.mag, star.bv)
     }
 }
 
@@ -74,33 +99,15 @@ impl Star {
         [vx, vy, vz].into()
     }
 
-    //ap subcube
-    /// Return the subcube the [Star] is in
-    pub fn subcube(&self) -> Subcube {
-        self.subcube
-    }
-
-    //ap id
-    /// Get the id of the [Star]
-    pub fn id(&self) -> usize {
-        self.id
-    }
-
-    //ap mag
-    /// Get the magnitude of the [Star]
-    pub fn mag(&self) -> f32 {
-        self.vmag
-    }
-
-    //ap vector
-    /// Get the unit vector of the [Star]
-    pub fn vector(&self) -> &Vec3 {
-        &self.vector
+    //ap brighter_than
+    /// Return true if the magnitude is less than a value
+    pub fn brighter_than(&self, mag: f32) -> bool {
+        self.mag < mag
     }
 
     //cp new
     /// Create a new [Star] given its details
-    pub fn new(id: usize, ra: f64, de: f64, ly: f32, vmag: f32, bv: f32) -> Self {
+    pub fn new(id: usize, ra: f64, de: f64, ly: f32, mag: f32, bv: f32) -> Self {
         let vector = Self::vec_of_ra_de(ra, de);
         let subcube = Subcube::of_vector(&vector);
         Self {
@@ -108,7 +115,7 @@ impl Star {
             ra,
             de,
             ly,
-            vmag,
+            mag,
             bv,
             vector,
             subcube,
