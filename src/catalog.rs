@@ -165,7 +165,7 @@ impl Catalog {
     /// Add names for a set of stars in the catalog, from their IDs
     ///
     /// The catalog must have been sorted beforehand
-    pub fn add_names<I: Into<String> + Copy>(
+    pub fn add_names<I: Into<String> + Clone>(
         &mut self,
         id_names: &[(usize, I)],
         ignore_not_found: bool,
@@ -177,7 +177,7 @@ impl Catalog {
                 }
                 return Err(Error::FailedToFindId(*id));
             };
-            self.named_stars.insert((*name).into(), index);
+            self.named_stars.insert(name.clone().into(), index);
         }
         Ok(())
     }
@@ -231,6 +231,14 @@ impl Catalog {
         closest
     }
 
+    //mp iter_stars
+    pub fn iter_stars(&self) -> StarIter {
+        StarIter {
+            catalog: self,
+            i: 0,
+        }
+    }
+
     //mp iter_within_subcubes
     /// Iteratre over all the stars in the catalog within a set of
     /// subcubes provide by an iterator
@@ -265,6 +273,23 @@ impl std::ops::Index<Subcube> for Catalog {
 //         &mut self.subcubes[q.as_usize()]
 //     }
 // }
+pub struct StarIter<'a> {
+    catalog: &'a Catalog,
+    i: usize,
+}
+impl<'a> std::iter::Iterator for StarIter<'a> {
+    type Item = &'a Star;
+    fn next(&mut self) -> Option<&'a Star> {
+        if self.i < self.catalog.len() {
+            let i = self.i;
+            self.i += 1;
+            Some(&self.catalog.stars[i])
+        } else {
+            None
+        }
+    }
+}
+
 pub struct StarSubcubeIter<'a, I>
 where
     I: std::iter::Iterator<Item = Subcube>,
