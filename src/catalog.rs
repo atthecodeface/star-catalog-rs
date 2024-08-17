@@ -118,6 +118,10 @@ impl Catalog {
             Err(_) => None,
         }
     }
+    pub fn find_name(&self, name: &str) -> Option<usize> {
+        self.named_stars.get(name).copied()
+    }
+
     /// Find the closest star in the catalog given an RA and DE in radians
     pub fn closest_to(&self, ra: f32, de: f32) -> Option<(f32, usize)> {
         assert!(
@@ -141,6 +145,18 @@ impl Catalog {
         }
         closest
     }
+
+    pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<I>
+    where
+        I: std::iter::Iterator<Item = Subcube>,
+    {
+        StarSubcubeIter {
+            catalog: self,
+            subcube_iter,
+            subcube: None,
+            i: 0,
+        }
+    }
 }
 
 impl std::ops::Index<Subcube> for Catalog {
@@ -152,5 +168,37 @@ impl std::ops::Index<Subcube> for Catalog {
 impl std::ops::IndexMut<Subcube> for Catalog {
     fn index_mut(&mut self, q: Subcube) -> &mut Vec<usize> {
         &mut self.subcubes[q.as_usize()]
+    }
+}
+pub struct StarSubcubeIter<'a, I>
+where
+    I: std::iter::Iterator<Item = Subcube>,
+{
+    catalog: &'a Catalog,
+    subcube_iter: I,
+    subcube: Option<Subcube>,
+    i: usize,
+}
+impl<'a, I> std::iter::Iterator for StarSubcubeIter<'a, I>
+where
+    I: std::iter::Iterator<Item = Subcube>,
+{
+    type Item = &'a Star;
+    fn next(&mut self) -> Option<&'a Star> {
+        loop {
+            if self.subcube.is_none() {
+                self.subcube = self.subcube_iter.next();
+            }
+            let Some(subcube) = self.subcube else {
+                return None;
+            };
+            while self.i < self.catalog[subcube].len() {
+                let i = self.i;
+                self.i += 1;
+                return Some(&self.catalog.stars[self.catalog[subcube][i]]);
+            }
+            self.i = 0;
+            self.subcube = None;
+        }
     }
 }

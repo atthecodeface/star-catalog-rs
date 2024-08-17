@@ -1,3 +1,5 @@
+use geo_nd::Vector;
+
 use crate::Vec3;
 
 #[derive(Debug, Clone, Copy)]
@@ -74,9 +76,12 @@ impl Subcube {
     ///
     /// 8 is needed for cos() > 0.992 (7.25 degrees)
     /// There are 1080842 (/2) pairs of stars of vmag < 7.0 separated by at most that
-    const ELE_PER_SIDE: usize = 32;
+    pub const ELE_PER_SIDE: usize = 32;
     const ELE_PER_SIDE2: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
     pub const NUM_SUBCUBES: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
+
+    pub const SUBCUBE_SIZE: f32 = 2.0 / Self::ELE_PER_SIDE as f32;
+    pub const SUBCUBE_RADIUS: f32 = 1.7321 * (Self::SUBCUBE_SIZE / 2.0);
 
     //fi delta
     const fn delta(b: usize) -> isize {
@@ -117,15 +122,26 @@ impl Subcube {
         Self::delta(26),
     ];
 
-    // cos_quad = math.cos(2*math.asin(1/ELE_PER_SIDE))
+    //fi index_of_coord
+    /// Get the subcube index of a coordinate
+    ///
+    /// The coordinate must be in the range -1. to 1.
+    fn index_of_coord(c: f32) -> usize {
+        let c = c.min(1.);
+        ((c + 1.0).abs() * (Self::ELE_PER_SIDE as f32) / 2.0 * 0.999_999).floor() as usize
+    }
+
+    //fi coord_of_index
+    /// Get the coordinate of the centre of an index
+    fn coord_of_index(i: usize) -> f32 {
+        (2 * i + 1) as f32 / Self::ELE_PER_SIDE as f32 - 1.0
+    }
+
     pub fn of_vector(v: &Vec3) -> Self {
-        let xe =
-            ((v[0] + 1.0).abs() * (Self::ELE_PER_SIDE as f32) / 2.0 * 0.99999).floor() as usize;
-        let ye =
-            ((v[1] + 1.0).abs() * (Self::ELE_PER_SIDE as f32) / 2.0 * 0.99999).floor() as usize;
-        let ze =
-            ((v[1] + 1.0).abs() * (Self::ELE_PER_SIDE as f32) / 2.0 * 0.99999).floor() as usize;
-        Self(xe + ye * Self::ELE_PER_SIDE + ze * Self::ELE_PER_SIDE2)
+        let xe = Self::index_of_coord(v[0]);
+        let ye = Self::index_of_coord(v[1]);
+        let ze = Self::index_of_coord(v[2]);
+        (xe, ye, ze).into()
     }
 
     pub fn as_usize(&self) -> usize {
@@ -162,6 +178,40 @@ impl Subcube {
         mask
     }
 
+    pub fn center(&self) -> Vec3 {
+        let (x, y, z): (usize, usize, usize) = self.into();
+        [
+            Self::coord_of_index(x),
+            Self::coord_of_index(y),
+            Self::coord_of_index(z),
+        ]
+        .into()
+    }
+
+    pub fn may_be_on_sphere(&self) -> bool {
+        let c = self.center();
+        let r = c.length();
+        if r < 1.0 - Self::SUBCUBE_RADIUS {
+            false
+        } else if r > 1.0 + Self::SUBCUBE_RADIUS {
+            false
+        } else {
+            true
+        }
+    }
+
+    pub fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f32> {
+        let c = self.center();
+        let r = c.length();
+        if r < 1.0 - Self::SUBCUBE_RADIUS {
+            None
+        } else if r > 1.0 + Self::SUBCUBE_RADIUS {
+            None
+        } else {
+            Some(v.dot(&c) / r)
+        }
+    }
+
     pub fn iter_neighbors(&self) -> SubcubeNeighborIter {
         let mask = self.neighbors();
         SubcubeNeighborIter {
@@ -169,6 +219,53 @@ impl Subcube {
             delta_index: 0,
             mask,
         }
+    }
+
+    pub fn iter_all() -> SubcubeRangeIter {
+        SubcubeRangeIter {
+            xyz: (0, 0, 0),
+            xrange: 0..Self::ELE_PER_SIDE,
+            yrange: 0..Self::ELE_PER_SIDE,
+            zrange: 0..Self::ELE_PER_SIDE,
+        }
+    }
+
+    pub fn iter_range(&self, dxyz: usize) -> SubcubeRangeIter {
+        let xyz: (usize, usize, usize) = (*self).into();
+        let xmin = if xyz.0 < dxyz { 0 } else { xyz.0 - dxyz };
+        let xmax = (xyz.0 + dxyz + 1).min(Self::ELE_PER_SIDE);
+        let ymin = if xyz.1 < dxyz { 0 } else { xyz.1 - dxyz };
+        let ymax = (xyz.1 + dxyz + 1).min(Self::ELE_PER_SIDE);
+        let zmin = if xyz.2 < dxyz { 0 } else { xyz.2 - dxyz };
+        let zmax = (xyz.2 + dxyz + 1).min(Self::ELE_PER_SIDE);
+        SubcubeRangeIter {
+            xyz: (xmin, ymin, zmin),
+            xrange: xmin..xmax,
+            yrange: ymin..ymax,
+            zrange: zmin..zmax,
+        }
+    }
+}
+
+impl From<Subcube> for (usize, usize, usize) {
+    fn from(s: Subcube) -> (usize, usize, usize) {
+        (&s).into()
+    }
+}
+
+impl From<&Subcube> for (usize, usize, usize) {
+    fn from(s: &Subcube) -> (usize, usize, usize) {
+        let s = s.as_usize();
+        let x = s % Subcube::ELE_PER_SIDE;
+        let y = (s / Subcube::ELE_PER_SIDE) % Subcube::ELE_PER_SIDE;
+        let z = s / Subcube::ELE_PER_SIDE2;
+        (x, y, z)
+    }
+}
+impl From<(usize, usize, usize)> for Subcube {
+    fn from((x, y, z): (usize, usize, usize)) -> Subcube {
+        let s = x + y * Self::ELE_PER_SIDE + z * Self::ELE_PER_SIDE2;
+        Subcube(s)
     }
 }
 
@@ -200,5 +297,32 @@ impl std::iter::Iterator for SubcubeNeighborIter {
             }
         }
         None
+    }
+}
+
+pub struct SubcubeRangeIter {
+    xyz: (usize, usize, usize),
+    xrange: std::ops::Range<usize>,
+    yrange: std::ops::Range<usize>,
+    zrange: std::ops::Range<usize>,
+}
+impl std::iter::Iterator for SubcubeRangeIter {
+    type Item = Subcube;
+    fn next(&mut self) -> Option<Subcube> {
+        if !self.xrange.contains(&self.xyz.0) {
+            self.xyz.0 = self.xrange.start;
+            self.xyz.1 += 1;
+        }
+        if !self.yrange.contains(&self.xyz.1) {
+            self.xyz.0 = self.xrange.start;
+            self.xyz.1 = self.yrange.start;
+            self.xyz.2 += 1;
+        }
+        if !self.zrange.contains(&self.xyz.2) {
+            return None;
+        }
+        let subcube = self.xyz.into();
+        self.xyz.0 += 1;
+        Some(subcube)
     }
 }

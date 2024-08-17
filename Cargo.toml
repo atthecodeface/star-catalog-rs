@@ -12,6 +12,9 @@ categories = ["science"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/star-catalog-rs"
 
+[dependencies]
+image = { version = "0.25.2", features = ["png"] }
+
 [dependencies.serde_json]
 version = "1.0.125"
 features = ["alloc"]

@@ -87,6 +87,12 @@ impl Star {
         self.id
     }
 
+    //ap mag
+    /// Get the magnitude of the [Star]
+    pub fn mag(&self) -> f32 {
+        self.vmag
+    }
+
     //ap vector
     /// Get the unit vector of the [Star]
     pub fn vector(&self) -> &Vec3 {
