@@ -24,6 +24,12 @@ angles).
 cargo add star-catalog
 ```
 
+## Features
+
+The 'csv' feature can be added to permit reading of (e.g.) Hipparcos
+CSV catalog files. This is not required in normal use, as JSON is used
+for the included Hipparcos catalog.
+
 ## Releases
 
 Release notes are available in [RELEASES.md](RELEASES.md).

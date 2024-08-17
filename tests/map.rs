@@ -177,7 +177,8 @@ impl Camera {
     }
 }
 
-// #[test]
+#[cfg(feature = "image")]
+#[test]
 fn test_quats() -> Result<(), Box<dyn Error>> {
     // let comp = "HD105043";
     let comp = "Kappa Draconis";

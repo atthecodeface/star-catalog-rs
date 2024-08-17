@@ -157,6 +157,20 @@
 //! # Ok(())
 //! # }
 //! ```
+//! # Crate Feature Flags
+//!
+//!! The following crate feature flags are available. They are configured in your Cargo.toml.
+//!
+//! * csv
+//!
+//!    * Optional, compatible with Rust stable
+//!    * Allows reading of CSV catalog files (such as hipparcos::read_to_catalog)
+//!
+//! * image
+//!
+//!    * Optional, compatible with Rust stable
+//!    * Will be used for creating skymap images
+//!
 
 pub type Vec3 = geo_nd::FArray<f64, 3>;
 pub type Vec4 = geo_nd::FArray<f64, 4>;

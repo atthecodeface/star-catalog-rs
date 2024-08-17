@@ -1,5 +1,4 @@
-//!
-//! # Hipparcos data
+//! # Hipparcos data and catalog reading
 //!
 //! The Hipparcos catalog is available as 'hipparcos-voidmain.csv';
 //! this library provides a means for reading that in and creating a
@@ -97,6 +96,9 @@ struct Record {
 /// This ignores stars from the catalog that do not have all of the
 /// required records; there are then 116,812 valid stars of any visual
 /// magnitude
+///
+/// This requires the 'csv' feature
+#[cfg(feature = "csv")]
 pub fn read_to_catalog<R: std::io::Read>(
     catalog: &mut Catalog,
     reader: R,

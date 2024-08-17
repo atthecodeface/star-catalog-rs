@@ -1,6 +1,6 @@
 [package]
 name = "star-catalog"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 readme = "README.md"
 authors = ["Gavin J Stark"]
@@ -12,8 +12,16 @@ categories = ["science"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/star-catalog-rs"
 
-[dependencies]
-image = { version = "0.25.2", features = ["png"] }
+
+[features]
+default = []
+image = ["dep:image"]
+csv = ["dep:csv"]
+
+[dependencies.image]
+version = "0.25.2"
+features = ["png"]
+optional = true
 
 [dependencies.serde_json]
 version = "1.0.125"
@@ -28,7 +36,7 @@ features = ["derive"]
 
 [dependencies.csv]
 version = "1.3"
-# features = ["derive"]
+optional = true
 
 [dependencies.thiserror]
 version = ">=1.0.61"
