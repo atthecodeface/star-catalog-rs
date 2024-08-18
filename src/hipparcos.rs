@@ -9,6 +9,7 @@
 //!
 
 //a Imports
+#[cfg(feature = "csv")]
 use crate::{Catalog, Star};
 
 //ti Record
@@ -64,6 +65,7 @@ use crate::{Catalog, Star};
 ///
 /// Polaris = 3.26156 / 7.56E-3 = 431 light years (3s.f.)
 /// Dubhe = 3.26156 / 26.38E-3 = 124 light years (3s.f.)
+#[cfg(feature = "csv")]
 #[derive(Debug, serde::Deserialize)]
 struct Record {
     #[serde(rename = "HIP")]

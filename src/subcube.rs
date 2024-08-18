@@ -107,46 +107,6 @@ impl Subcube {
     /// subcube)
     pub const SUBCUBE_RADIUS: f64 = 1.7321 * (Self::SUBCUBE_SIZE / 2.0);
 
-    //fi delta
-    const fn delta(b: usize) -> isize {
-        let b = b as isize;
-        let x = b % 3;
-        let y = (b / 3) % 3;
-        let z = (b / 9) % 3;
-        (x - 1) + (y - 1) * (Self::ELE_PER_SIDE as isize) + (z - 1) * (Self::ELE_PER_SIDE2 as isize)
-    }
-
-    //ci DELTAS
-    const DELTAS: [isize; 27] = [
-        Self::delta(0),
-        Self::delta(1),
-        Self::delta(2),
-        Self::delta(3),
-        Self::delta(4),
-        Self::delta(5),
-        Self::delta(6),
-        Self::delta(7),
-        Self::delta(8),
-        Self::delta(9),
-        Self::delta(10),
-        Self::delta(11),
-        Self::delta(12),
-        Self::delta(13),
-        Self::delta(14),
-        Self::delta(15),
-        Self::delta(16),
-        Self::delta(17),
-        Self::delta(18),
-        Self::delta(19),
-        Self::delta(20),
-        Self::delta(21),
-        Self::delta(22),
-        Self::delta(23),
-        Self::delta(24),
-        Self::delta(25),
-        Self::delta(26),
-    ];
-
     //fi index_of_coord
     /// Get the subcube index of a coordinate
     ///
