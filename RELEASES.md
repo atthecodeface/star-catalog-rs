@@ -1,3 +1,11 @@
+# Release 0.0.3 (2024-08-19)
+
+- Added binary 'star_catalog' to display information and create images
+
+- Added color temperature
+
+- Removed SubcubeMask
+
 # Release 0.0.2 (2024-08-17)
 
 - Removed SubcubeNeighborIter

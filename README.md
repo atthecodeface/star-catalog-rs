@@ -72,13 +72,18 @@ magnitude.
 
 The 'find' subcommand prints the star data for a number of stars,
 using either id or name (names only make sense if the catalog was
-loaded with a names file too; see above)..
+loaded with a names file too; see above).
 
   star_catalog <catalog> find <id> [<id>*]
 
   star_catalog <catalog> --names <names> find <id|name> [<id|name>*]
 
 The output format is as shown in the 'list' command
+
+### Subcommand 'angle_between
+
+The 'angle_between' subcommand takes a number of ids or names (if a
+named catalog) and prints out the angle between each pair, in degrees.
 
 ### Subcommand 'write'
 
@@ -98,13 +103,17 @@ The output catalog will only contains stars with a visual magnitude of
 This is only supported if the binary is compiled with the 'image' feature.
 
 The 'image' subcommand generates an image of a region of the star map;
-currently it is fairly primitive.
+currently it is fairly primitive. Stars are colored according to B-V
+(temperature) and sized according to magnitude.
 
 THe region to display is specified by options to the 'image'
 subcommand of -r, -d for right ascension, declination to provide a
-direction; -W and -H provide the width and height of the image; -a
-provides a field of view of the *width* of the image. The image
-produced is written to an output filename provided by -o.
+direction; -a rotates the 'up' vector from north; -W and -H provide
+the width and height of the image; -f provides a field of view of the
+*width* of the image. The image produced is written to an output
+filename provided by -o.
+
+Support is provided for jpeg and png images
 
 ## Library
 
