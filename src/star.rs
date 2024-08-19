@@ -38,6 +38,7 @@ pub struct StarSerialized(
 /// A description of a star, usually in a Catalog
 ///
 /// This is optimized to fit within 64 bytes
+///
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(from = "StarSerialized", into = "StarSerialized")]
 pub struct Star {
@@ -90,6 +91,69 @@ impl From<StarSerialized> for Star {
 
 //ip Star
 impl Star {
+    //ap temp
+    /// Get an temperature for the star
+    pub fn temp(&self) -> f32 {
+        let t = 4600.0 * (1.0 / (1.7 + 0.92 * self.bv) + 1.0 / (0.62 + 0.92 * self.bv));
+        eprintln!("{} {}", self.bv, t);
+        t
+    }
+
+    //fp temp_to_rgb
+    /// This only really works for t >= 1600
+    ///
+    /// The first stage is to convert to black body CIE XY
+    /// coordinates; then to convert to linear RGB, and finally to
+    /// sRGB (which provides gamma correction for 'standard' RGB that
+    /// modern OSes use)
+    pub fn temp_to_rgb(t: f32) -> (f32, f32, f32) {
+        let x = {
+            if t <= 4000.0 {
+                (-0.2661239E9 / t.powi(3))
+                    + (-0.2343580E6 / t.powi(2))
+                    + (0.8776956E3 / t)
+                    + 0.179910
+            } else {
+                (-3.0258469E9 / t.powi(3))
+                    + (2.1070379E6 / t.powi(2))
+                    + (0.2226347E3 / t)
+                    + 0.240390
+            }
+        };
+
+        let y = {
+            if t <= 2222.0 {
+                -1.1063814 * x.powi(3) - 1.34811020 * x.powi(2) + 2.18555832 * x - 0.20219683
+            } else if t > 2222.0 && t <= 4000.0 {
+                -0.9549476 * x.powi(3) - 1.37418593 * x.powi(2) + 2.09137015 * x - 0.16748867
+            } else {
+                3.0817580 * x.powi(3) - 5.87338670 * x.powi(2) + 3.75112997 * x - 0.37001483
+            }
+        };
+
+        let cie_y = 1.0;
+        let (cie_x, cie_z) = {
+            if y <= 0.0 {
+                (0.0, 0.0)
+            } else {
+                ((x * cie_y) / y, ((1.0 - x - y) * cie_y) / y)
+            }
+        };
+
+        fn linear_to_srgb(c: f32) -> f32 {
+            if c < 0.0031308 {
+                c * 12.92
+            } else {
+                1.055 * c.powf(1.0 / 2.4) - 0.055
+            }
+        }
+        let r = 3.2406 * cie_x - 1.5372 * cie_y - 0.4986 * cie_z;
+        let g = -0.9689 * cie_x + 1.8758 * cie_y + 0.0415 * cie_z;
+        let b = 0.0557 * cie_x - 0.2040 * cie_y + 1.0570 * cie_z;
+
+        (linear_to_srgb(r), linear_to_srgb(g), linear_to_srgb(b))
+    }
+
     //fi vec_of_ra_de
     /// Calculate a unit vector from a right ascension and declination
     pub fn vec_of_ra_de(ra: f64, de: f64) -> Vec3 {
