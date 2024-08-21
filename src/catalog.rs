@@ -262,7 +262,7 @@ impl Catalog {
         &self,
         subcube_iter: I,
         angles_to_find: &[f64; 3],
-        max_angle_delta: &f64,
+        max_angle_delta: f64,
     ) -> Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>
     where
         I: Iterator<Item = Subcube>,
@@ -274,8 +274,8 @@ impl Catalog {
             .iter()
             .map(|a| {
                 (
-                    (a + max_angle_delta).cos(),
-                    (a - max_angle_delta).max(0.).cos(),
+                    (*a + max_angle_delta).cos(),
+                    (*a - max_angle_delta).max(0.).cos(),
                 )
             })
             .collect();
@@ -286,8 +286,8 @@ impl Catalog {
             .iter()
             .map(|a| {
                 (
-                    (a - max_angle_delta - subcube_max_angle).max(0.),
-                    (a + max_angle_delta + subcube_max_angle).min(std::f64::consts::PI / 2.),
+                    (*a - max_angle_delta - subcube_max_angle).max(0.),
+                    (*a + max_angle_delta + subcube_max_angle).min(std::f64::consts::PI / 2.),
                 )
             })
             .collect();
@@ -313,6 +313,8 @@ impl Catalog {
         // Run through all the supplied subcubes
         let mut result = vec![];
         let mut subcubes_to_search = vec![];
+
+        eprintln!("{subcube_max_angle} {subcube_cos_angle_ranges:?}");
         for sub0 in subcube_iter {
             if self[sub0].is_empty() {
                 continue;
