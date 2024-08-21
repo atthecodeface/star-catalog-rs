@@ -120,6 +120,19 @@ mod cmdline {
             .unwrap_or(0.0)
     }
 
+    //fp add_angles_arg
+    pub fn add_angles_arg(cmd: Command) -> Command {
+        cmd.arg(
+            Arg::new("angles")
+                .help("Angles for the command")
+                .value_parser(value_parser!(f64))
+                .action(ArgAction::Append),
+        )
+    }
+    pub fn angles(matches: &ArgMatches) -> Option<ValuesRef<'_, f64>> {
+        matches.get_many::<f64>("angles")
+    }
+
     //fp add_fov_arg
     pub fn add_fov_arg(cmd: Command) -> Command {
         cmd.arg(
@@ -197,6 +210,10 @@ fn main() -> Result<(), anyhow::Error> {
     let find_subcmd = cmdline::add_stars_arg(find_subcmd);
     let angle_subcmd = Command::new("angle_between").about("Find angle betwen stars");
     let angle_subcmd = cmdline::add_stars_arg(angle_subcmd);
+    let triangle_subcmd =
+        Command::new("triangle").about("Find a triangle of stars from three angles between them");
+    let triangle_subcmd = cmdline::add_angle_arg(triangle_subcmd);
+    let triangle_subcmd = cmdline::add_angles_arg(triangle_subcmd);
     let write_subcmd = Command::new("write").about("Write out the catalog");
     let write_subcmd = cmdline::add_output_arg(write_subcmd);
     let image_subcmd = Command::new("image").about("Generate an image");
@@ -218,6 +235,7 @@ fn main() -> Result<(), anyhow::Error> {
     let cmd = cmd.subcommand(list_subcmd);
     let cmd = cmd.subcommand(find_subcmd);
     let cmd = cmd.subcommand(angle_subcmd);
+    let cmd = cmd.subcommand(triangle_subcmd);
     let cmd = cmd.subcommand(write_subcmd);
     let cmd = {
         if has_image {
@@ -315,6 +333,9 @@ fn main() -> Result<(), anyhow::Error> {
         Some(("image", sub_matches)) => {
             image(catalog, sub_matches)?;
         }
+        Some(("triangle", sub_matches)) => {
+            find_triangle(catalog, sub_matches)?;
+        }
         Some(("write", sub_matches)) => {
             write(catalog, sub_matches)?;
         }
@@ -399,6 +420,41 @@ fn angle_between(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
                 );
             }
         }
+    }
+    Ok(())
+}
+
+fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
+    let Some(angles) = cmdline::angles(matches) else {
+        return Err(anyhow!(
+            "Exactly three angles must be specified to find a triangle"
+        ));
+    };
+
+    if angles.len() != 3 {
+        return Err(anyhow!(
+            "Exactly three angles must be specified to find a triangle"
+        ));
+    }
+
+    let mut angles_to_find = [0.; 3];
+    for (i, a) in angles.enumerate() {
+        angles_to_find[i] = a / 180.0 * std::f64::consts::PI;
+    }
+
+    // let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;
+    let max_angle_delta = cmdline::angle(&matches);
+
+    let subcube_iter = Subcube::iter_all();
+    let r = catalog.find_star_triangles(subcube_iter, &angles_to_find, max_angle_delta);
+    for (a, b, c) in &r {
+        let a01 = catalog[*a].cos_angle_between(&catalog[*b]).acos() * 180.0 / std::f64::consts::PI;
+        let a02 = catalog[*a].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
+        let a12 = catalog[*b].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
+        eprintln!(
+            "{}, {}, {} : {} {} {}",
+            catalog[*a].id, catalog[*b].id, catalog[*c].id, a01, a02, a12,
+        );
     }
     Ok(())
 }

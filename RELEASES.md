@@ -1,3 +1,7 @@
+# Release 0.0.5 (2024-08-21)
+
+- Add 'triangle' to star_catalog binary to allow searching for a triangle of stars
+
 # Release 0.0.4 (2024-08-21)
 
 - Added internal catalog `hipp_bright` if hipp_bright feature is used

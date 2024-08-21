@@ -314,7 +314,6 @@ impl Catalog {
         let mut result = vec![];
         let mut subcubes_to_search = vec![];
 
-        eprintln!("{subcube_max_angle} {subcube_cos_angle_ranges:?}");
         for sub0 in subcube_iter {
             if self[sub0].is_empty() {
                 continue;

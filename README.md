@@ -59,6 +59,12 @@ The subcommands supported are:
 
  * write: Write out a star catalog as a JSON file or Postcard file
 
+ * image: Generate an image of the sky
+
+ * angle_between: Print the angles between a set of stars
+
+ * triangle: Find a triangle of stars from three angles (within an angular delta)
+
 If no subcommand is provided then the command just prints out the
 number of stars in the catalog as read.
 
@@ -108,6 +114,21 @@ The output catalog will only contains stars with a visual magnitude of
 If the `postcard` feature is enabled then a filename with '.pst'
 extension will output the file as a Postcaard (binary) file (which are
 about 40% of the size of JSON files)
+
+### Subcommand `triangle`
+
+This requires three angles as arguments, in degrees, which are the
+angles between three stars in the sky (a to b, a to c, and b to c).
+
+It uses the `--angle` argument to supply a delta to apply to each of
+these (the maximum error in the angles).
+
+This will search the catalog for triangles of stars that have the
+required angles, plus or minus the angular delta.
+
+The result is a list of three triangle IDs (and the angles between the stars)
+
+The maximum angle supported for a search is 90 degrees.
 
 ### Subcommand `image`
 
