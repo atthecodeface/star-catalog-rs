@@ -63,7 +63,7 @@ mod cmdline {
         )
     }
     pub fn magnitude(matches: &ArgMatches) -> f32 {
-        *matches.get_one::<f32>("magnitude").unwrap_or(&6.0)
+        *matches.get_one::<f32>("magnitude").unwrap_or(&12.0)
     }
 
     //fp add_right_ascension_arg
@@ -185,19 +185,11 @@ fn main() -> Result<(), anyhow::Error> {
         .version("0.1.0");
 
     #[allow(unused_assignments)]
-    let mut has_csv = false;
-    #[cfg(feature = "csv")]
-    {
-        has_csv = true;
-    }
-
-    #[allow(unused_assignments)]
     let mut has_image = false;
     #[cfg(feature = "image")]
     {
         has_image = true;
     }
-    has_csv = has_csv;
     has_image = has_image;
 
     let list_subcmd = Command::new("list").about("Lists the stars in the catalog");
@@ -205,7 +197,7 @@ fn main() -> Result<(), anyhow::Error> {
     let find_subcmd = cmdline::add_stars_arg(find_subcmd);
     let angle_subcmd = Command::new("angle_between").about("Find angle betwen stars");
     let angle_subcmd = cmdline::add_stars_arg(angle_subcmd);
-    let write_subcmd = Command::new("write").about("Write out the catalog as JSON");
+    let write_subcmd = Command::new("write").about("Write out the catalog");
     let write_subcmd = cmdline::add_output_arg(write_subcmd);
     let image_subcmd = Command::new("image").about("Generate an image");
     let image_subcmd = cmdline::add_output_arg(image_subcmd);
@@ -246,33 +238,47 @@ fn main() -> Result<(), anyhow::Error> {
                 let s = std::fs::read_to_string(catalog_filename)?;
                 let mut catalog: Catalog = serde_json::from_str(&s)?;
                 catalog.retain(|s| s.brighter_than(magnitude));
-                Ok(catalog)
+                catalog
             }
+            #[cfg(feature = "postcard")]
+            Some("pst") => {
+                let data = std::fs::read(catalog_filename)?;
+                let mut catalog: Catalog = postcard::from_bytes(&data)?;
+                catalog.retain(|s| s.brighter_than(magnitude));
+                catalog
+            }
+            #[cfg(feature = "csv")]
             Some("csv") => {
-                if has_csv {
-                    let mut catalog = Catalog::default();
-                    catalog = catalog;
-                    #[cfg(feature = "csv")]
-                    {
-                        let f = std::fs::File::open(catalog_filename)?;
-                        star_catalog::hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
-                    }
-                    Ok(catalog)
-                } else {
-                    Err(anyhow!("CSV support not provided; star_catalog must be compiled with feature 'csv'"))
+                let mut catalog = Catalog::default();
+                catalog = catalog;
+                {
+                    let f = std::fs::File::open(catalog_filename)?;
+                    star_catalog::hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
                 }
+                catalog
             }
-            Some(_) => Err(anyhow!(
-                "Unknown extension on catalog {}",
+            None => {
+                #[allow(unused_mut)]
+                let mut catalog = Catalog::default();
+                #[cfg(feature = "hipp_bright")]
+                if catalog_filename.as_os_str().as_encoded_bytes() == b"hipp_bright" {
+                    catalog = postcard::from_bytes(&star_catalog::hipparcos::HIPP_BRIGHT_PST)?;
+                    catalog.retain(|s| s.brighter_than(magnitude));
+                }
+                if catalog.is_empty() {
+                    Err(anyhow!(
+                        "Unknown builtin catalog {} (use feature hipp_bright)",
+                        catalog_filename.display()
+                    ))?
+                }
+                catalog
+            }
+            _ => Err(anyhow!(
+                "Unknown extension on catalog {} (note that CSV, postcard etc support must be compiled in with appropriate features)",
                 catalog_filename.display()
-            )),
-
-            None => Err(anyhow!(
-                "Unknown extension on catalog {}",
-                catalog_filename.display()
-            )),
+            ))?,
         }
-    }?;
+    };
 
     catalog.sort();
     let angle = cmdline::angle(&matches);
@@ -407,9 +413,23 @@ fn list(catalog: Catalog, _matches: &ArgMatches) -> Result<(), anyhow::Error> {
 fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     use std::io::Write;
     let output_filename: PathBuf = cmdline::output(&matches).into();
-    let mut f = std::fs::File::create(output_filename)?;
-    let s = serde_json::to_string_pretty(&catalog)?.replace(" ", "");
-    f.write(s.as_bytes())?;
+    match output_filename.extension().and_then(|x| x.to_str()) {
+        Some("json") => {
+            let mut f = std::fs::File::create(output_filename)?;
+            let s = serde_json::to_string_pretty(&catalog)?.replace(" ", "");
+            f.write(s.as_bytes())?;
+        }
+        #[cfg(feature = "postcard")]
+        Some("pst") => {
+            let mut f = std::fs::File::create(output_filename)?;
+            let s = postcard::to_allocvec(&catalog)?;
+            f.write(&s)?;
+        }
+        _ => Err(anyhow!(
+            "Unknown extension on catalog {} (note that CSV, postcard etc support must be compiled in with appropriate features)",
+            output_filename.display()
+        ))?,
+    }
     Ok(())
 }
 

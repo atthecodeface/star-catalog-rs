@@ -17,10 +17,17 @@ repository = "https://github.com/atthecodeface/star-catalog-rs"
 default = []
 image = ["dep:image"]
 csv = ["dep:csv"]
+postcard = ["dep:postcard"]
+hipp_bright = ["dep:postcard"]
 
 [dependencies.serde_json]
 version = "1.0.125"
 features = ["alloc"]
+
+[dependencies.postcard]
+version = "1.0"
+features = ["alloc"]
+optional = true
 
 [dependencies.geo-nd]
 version = ">=0.5"

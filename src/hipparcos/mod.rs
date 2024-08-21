@@ -233,3 +233,6 @@ pub const HIP_ALIASES: &[(usize, &str)] = &[
     (113881, "Scheat"),
     (113963, "Markab"),
 ];
+
+#[cfg(feature = "hipp_bright")]
+pub const HIPP_BRIGHT_PST: &[u8] = include_bytes!("hipp_bright.pst");

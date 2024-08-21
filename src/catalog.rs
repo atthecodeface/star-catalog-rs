@@ -48,7 +48,7 @@ pub struct Catalog {
     named_stars: HashMap<String, CatalogIndex>,
     /// Star indices within each subcube
     #[serde(skip)]
-    subcubes: Vec<Vec<usize>>,
+    subcubes: Vec<Vec<CatalogIndex>>,
 }
 
 impl Catalog {
@@ -137,7 +137,7 @@ impl Catalog {
             self.subcubes.push(vec![]);
         }
         for (i, s) in self.stars.iter().enumerate() {
-            self.subcubes[s.subcube.as_usize()].push(i)
+            self.subcubes[s.subcube.as_usize()].push(CatalogIndex(i));
         }
     }
 
@@ -218,13 +218,13 @@ impl Catalog {
         let mut closest = None;
         for s in s.iter_range(1) {
             for index in self[s].iter() {
-                let c = v.dot(&self.stars[*index].vector);
+                let c = v.dot(&self.stars[index.0].vector);
                 if let Some((cc, _)) = closest {
                     if c > cc {
-                        closest = Some((c, CatalogIndex(*index)));
+                        closest = Some((c, *index));
                     }
                 } else {
-                    closest = Some((c, CatalogIndex(*index)));
+                    closest = Some((c, *index));
                 }
             }
         }
@@ -263,8 +263,8 @@ impl std::ops::Index<CatalogIndex> for Catalog {
 }
 
 impl std::ops::Index<Subcube> for Catalog {
-    type Output = Vec<usize>;
-    fn index(&self, q: Subcube) -> &Vec<usize> {
+    type Output = Vec<CatalogIndex>;
+    fn index(&self, q: Subcube) -> &Vec<CatalogIndex> {
         &self.subcubes[q.as_usize()]
     }
 }
@@ -315,7 +315,7 @@ where
             while self.i < self.catalog[subcube].len() {
                 let i = self.i;
                 self.i += 1;
-                return Some(&self.catalog.stars[self.catalog[subcube][i]]);
+                return Some(&self.catalog.stars[self.catalog[subcube][i].0]);
             }
             self.i = 0;
             self.subcube = None;

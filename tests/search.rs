@@ -17,8 +17,8 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
     catalog.add_names(hipparcos::HIP_ALIASES, true)?;
     catalog.derive_data();
 
-    // Dubhe, Polaris, Megrez
-    let angles_to_find = [28.7, 10.22, 33.57];
+    // Dubhe, Polaris, Megrez (54061, 11767, 59774)
+    let angles_to_find = [28.71, 10.22, 33.58];
     // Dubhe, Megrez, Alkaid
     // let angles_to_find = [25.71, 10.22, 15.71];
     // Mizar, Megrez, Alkaid
@@ -28,6 +28,7 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
         .map(|x| x / 180.0 * std::f64::consts::PI)
         .collect();
     let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;
+    let max_angle_delta = 0.06 / 180.0 * std::f64::consts::PI;
     let cos_angle_ranges: Vec<(f64, f64)> = angles_to_find
         .iter()
         .map(|(a)| {
