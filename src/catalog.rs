@@ -240,7 +240,7 @@ impl Catalog {
     }
 
     //mp iter_within_subcubes
-    /// Iteratre over all the stars in the catalog within a set of
+    /// Iterate over all the stars in the catalog within a set of
     /// subcubes provide by an iterator
     pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<I>
     where
@@ -252,6 +252,159 @@ impl Catalog {
             subcube: None,
             i: 0,
         }
+    }
+
+    //mp find_star_triangles
+    /// Find
+    ///
+    /// Needs data to have been derived for the Catalog
+    pub fn find_star_triangles<I>(
+        &self,
+        subcube_iter: I,
+        angles_to_find: &[f64; 3],
+        max_angle_delta: &f64,
+    ) -> Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>
+    where
+        I: Iterator<Item = Subcube>,
+    {
+        // Find the range of cosines for the angles that we will accept
+        //
+        // Note cos(0) > cos(0.1) so min cos is cos(angle + max)
+        let cos_angle_ranges: Vec<(f64, f64)> = angles_to_find
+            .iter()
+            .map(|a| {
+                (
+                    (a + max_angle_delta).cos(),
+                    (a - max_angle_delta).max(0.).cos(),
+                )
+            })
+            .collect();
+
+        // Find the range of subcube centre angles that are allowed for each of the triangle angles
+        let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
+        let subcube_angle_ranges: Vec<(f64, f64)> = angles_to_find
+            .iter()
+            .map(|a| {
+                (
+                    (a - max_angle_delta - subcube_max_angle).max(0.),
+                    (a + max_angle_delta + subcube_max_angle).min(std::f64::consts::PI / 2.),
+                )
+            })
+            .collect();
+        let subcube_cos_angle_ranges: Vec<(f64, f64)> = subcube_angle_ranges
+            .iter()
+            .map(|(min, max)| (max.cos(), min.cos()))
+            .collect();
+
+        // Determine the delta to the subcube for each angle (subcubes
+        // outside the delta range for a subcube are guaranteed to
+        // have a larger angle between all the stars in them than any
+        // of the angle deltas that are being looked for)
+        //
+        // With max mag 7...
+        // For max 33.57 degrees (mag 7.0) needs range = 8
+        // For max 25.71 degrees (mag 5.0) needs range = 7
+        // let range = Subcube::ELE_PER_SIDE / 2;
+        // For max 15.71 degrees (mag 5.0)  needs range = 3
+        // let range = Subcube::ELE_PER_SIDE / 2;
+        let max_angle = angles_to_find.iter().fold(0.0, |acc: f64, b| acc.max(*b));
+        let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
+
+        // Run through all the supplied subcubes
+        let mut result = vec![];
+        let mut subcubes_to_search = vec![];
+        for sub0 in subcube_iter {
+            if self[sub0].is_empty() {
+                continue;
+            }
+
+            // Before we run through the stars in the subcube, find all
+            // the subcubes that are close enough to this one for the
+            // neighbors we are going to have to look for; this is for both [1] and [2]
+            //
+            // For large angle this might be doing 50x the work required
+            //
+            // However, for small angles the subcubes_to_search will only
+            // be about 6 things, all relevant,
+            let sub0_center = sub0.center().normalize();
+            subcubes_to_search.clear();
+            let min_cos = subcube_cos_angle_ranges[0]
+                .0
+                .min(subcube_cos_angle_ranges[1].0);
+            let max_cos = subcube_cos_angle_ranges[0]
+                .1
+                .max(subcube_cos_angle_ranges[1].1);
+            for s12 in sub0.iter_range(subcube_range) {
+                if self[s12].is_empty() {
+                    continue;
+                }
+                let Some(c) = s12.cos_angle_on_sphere(&sub0_center) else {
+                    continue;
+                };
+                if c < min_cos || c > max_cos {
+                    continue;
+                }
+                subcubes_to_search.push(s12)
+            }
+
+            for i0 in self[sub0].iter() {
+                let s0 = &self[*i0];
+                // iterate through subcubes_to_search, skipping those that are nowhere near angles_to_find[0] away
+                let subcubes_for_s0 = subcubes_to_search
+                    .iter()
+                    .filter(|s| {
+                        let c = s.center().normalize().dot(&sub0_center);
+                        c > subcube_cos_angle_ranges[0].0 && c < subcube_cos_angle_ranges[0].1
+                    })
+                    .copied();
+                for sub1 in subcubes_for_s0 {
+                    for i1 in self[sub1].iter() {
+                        if *i0 == *i1 {
+                            continue;
+                        }
+                        let s1 = &self[*i1];
+
+                        let c_s01 = s0.cos_angle_between(s1);
+                        if c_s01 < cos_angle_ranges[0].0 || c_s01 > cos_angle_ranges[0].1 {
+                            continue;
+                        }
+
+                        let sub1_center = sub1.center().normalize();
+                        let subcubes_for_s1 = subcubes_to_search
+                            .iter()
+                            .filter(|s| {
+                                let c = s.center().normalize().dot(&sub1_center);
+                                c > subcube_cos_angle_ranges[2].0
+                                    && c < subcube_cos_angle_ranges[2].1
+                            })
+                            .filter(|s| {
+                                let c = s.center().normalize().dot(&sub0_center);
+                                c > subcube_cos_angle_ranges[1].0
+                                    && c < subcube_cos_angle_ranges[1].1
+                            })
+                            .copied();
+                        for sub2 in subcubes_for_s1 {
+                            for i2 in self[sub2].iter() {
+                                if *i0 == *i2 || *i1 == *i2 {
+                                    continue;
+                                }
+                                let s2 = &self[*i2];
+                                let c_s02 = s0.cos_angle_between(s2);
+                                if c_s02 < cos_angle_ranges[1].0 || c_s02 > cos_angle_ranges[1].1 {
+                                    continue;
+                                }
+                                let c_s12 = s1.cos_angle_between(s2);
+                                if c_s12 < cos_angle_ranges[2].0 || c_s12 > cos_angle_ranges[2].1 {
+                                    continue;
+                                }
+                                result.push((*i0, *i1, *i2));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 }
 

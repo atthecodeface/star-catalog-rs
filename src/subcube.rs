@@ -75,6 +75,18 @@ use crate::Vec3;
 ///
 /// ELE_PER_SIDE of 8 is needed for cos() > 0.992 (7.25 degrees)
 /// There are 1080842 (/2) pairs of stars of vmag < 7.0 separated by at most that
+///
+/// ## Angles of subcubes
+///
+/// With 32 subcubes the subcube_max_angle is 6.18 degrees
+///
+/// * 2 subcubes = 12.4 degrees
+/// * 3 subcubes = 18.6 degrees
+/// * 4 subcubes = 24.8 degrees
+/// * 5 subcubes = 30.9 degrees
+/// * 6 subcubes = 37.1 degrees
+/// * 7 subcubes = 43.3 degrees
+/// * 8 subcubes = 49.5 degrees
 #[derive(Debug, Clone, Copy)]
 pub struct Subcube(u32);
 

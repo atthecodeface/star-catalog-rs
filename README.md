@@ -18,8 +18,15 @@ should perform.
 
 ### Selection of stars to load
 
-The star_catalog command expects as a minimum a catalog filename, from
-which stars are loaded. This is normally a JSON file.
+The star_catalog command expects either a builtin catalog, or a catalog filename, from
+which stars are loaded. This is normally a JSON file or Postcard file
+(.pst extension).
+
+If the `hipp_bright` feature is enabled then the Hipparcos catalog of
+stars with magnitude of 8 or brighter are loaded, from within the
+star_catalog binary iself.
+
+Postcard support is only enabled for the 'postcard' feature.
 
 If the 'csv' feature is enabled when building the binary then a
 hipparcos CSV file can be loaded; this can, for example, be used to
@@ -50,12 +57,12 @@ The subcommands supported are:
 
  * find: Find data on a single star by name or id
 
- * write: Write out a star catalog as a JSON file
+ * write: Write out a star catalog as a JSON file or Postcard file
 
 If no subcommand is provided then the command just prints out the
 number of stars in the catalog as read.
 
-### Subcommand 'list'
+### Subcommand `list`
 
 The 'list' subcommand prints the star data, sorted by id.
 
@@ -68,7 +75,7 @@ ascension and declination are printed in degrees, the distance in
 light years. The magnitude is that in the catalog, so normally visual
 magnitude.
 
-### Subcommand 'find'
+### Subcommand `find`
 
 The 'find' subcommand prints the star data for a number of stars,
 using either id or name (names only make sense if the catalog was
@@ -80,15 +87,15 @@ loaded with a names file too; see above).
 
 The output format is as shown in the 'list' command
 
-### Subcommand 'angle_between
+### Subcommand `angle_between`
 
 The 'angle_between' subcommand takes a number of ids or names (if a
 named catalog) and prints out the angle between each pair, in degrees.
 
-### Subcommand 'write'
+### Subcommand `write`
 
 The 'write' subcommand writes out the subset of the catalog that was
-loaded to a new json file, specified with the '--output <filename>'
+loaded to a new json file or poscard file, specified with the '--output <filename>'
 option.
 
 This can be used to shrink a catalog file - for example:
@@ -98,7 +105,11 @@ This can be used to shrink a catalog file - for example:
 The output catalog will only contains stars with a visual magnitude of
 -2.5 or brighter.
 
-### Subcommand 'image'
+If the `postcard` feature is enabled then a filename with '.pst'
+extension will output the file as a Postcaard (binary) file (which are
+about 40% of the size of JSON files)
+
+### Subcommand `image`
 
 This is only supported if the binary is compiled with the 'image' feature.
 
@@ -142,6 +153,16 @@ cargo add star-catalog
 The 'csv' feature can be added to permit reading of (e.g.) Hipparcos
 CSV catalog files. This is not required in normal use, as JSON is used
 for the included Hipparcos catalog.
+
+The 'image' feature allows writing of images of the sky map in the
+star_catalog binary
+
+The 'postcard' feature allows reading and writing of star catalogs in the
+star_catalog binary
+
+The 'hipp_bright' feature includes the Hipparcos catalog of stars with
+magnitude 8 or brighter as `hipparcos::HIPP_BRIGHT_PST`; in the
+star_catalog binary is provides this as a builtin catalog
 
 ## Releases
 

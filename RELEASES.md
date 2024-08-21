@@ -1,3 +1,13 @@
+# Release 0.0.4 (2024-08-21)
+
+- Added internal catalog `hipp_bright` if hipp_bright feature is used
+
+- Add search for a star triangle
+
+- Add postcard feature, for reading and writing catalogs
+
+- Made catalog use CatalogIndex for contents of its subcube Vecs
+
 # Release 0.0.3 (2024-08-19)
 
 - Added binary 'star_catalog' to display information and create images
