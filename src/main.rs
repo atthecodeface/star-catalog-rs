@@ -40,42 +40,252 @@ fn main() -> Result<(), anyhow::Error> {
         .about("Star catlog")
         .version("0.1.0");
 
+    let cmd = cmdline::add_catalog_arg(
+        cmd,
+        "Which star catalog to load
+
+This can be a filename with a '.json' extension, or (if enabled with
+feature csv) a '.csv' extension, or (if enabled with feature postcard)
+a '.pst' extension.
+
+Alterrnatively it can be a built-in catalog if no filename extensionis
+provide (if enabled with feature hipp_bright) 'hipp_bright'",
+    );
+
+    let cmd = cmdline::add_names_arg(
+        cmd,
+        "Mapping of star names to ids in the catalog
+
+This can be a filename with a '.json' extension or a built-in names
+description.
+
+If a JSON file is specified, it is a list of pairs of (name, id)
+
+Built-in name lists provided are 'hipp' and 'collated'; the former is
+the list of common Hipparcos star names from the ESA website, the
+latter is a collation of various lists that is much larger
+",
+    );
+
+    let cmd = cmdline::add_magnitude_arg(
+        cmd,
+        "Maximum brightess of stars to include
+
+Once a catalog has been loaded, any stars with a magnitude more than
+this value are discarded from the catalog
+
+The default value is 12.0
+",
+    );
+
+    let cmd = cmdline::add_angle_arg(
+        cmd,
+        "Angle for the star selection.
+
+If this option is provided then any star that is separated from the
+center of the selected region by more than this angle is discarded.
+
+If this option is not provided then stars are not discarded based on
+the selected region.
+",
+    );
+
+    let cmd = cmdline::add_right_ascension_arg(
+        cmd,
+        "Right ascension to center the star selection on.
+
+If the 'angle' option is provided then this specifies the right
+ascension (in degrees) of the center of the region of the catalog to keep; stars
+outside the region specified are discarded from the catalog.
+
+The default value is 0.
+",
+    );
+
+    let cmd = cmdline::add_declination_arg(
+        cmd,
+        "Declination to center the star selection on.
+
+If the 'angle' option is provided then this specifies the declination
+(in degrees) of the center of the region of the catalog to keep; stars
+outside the region specified are discarded from the catalog.
+
+The default value is 0.
+",
+    );
+
+    let cmd = cmdline::add_star_arg(
+        cmd,
+        "Star to center the star selection region on
+
+If the 'angle' option is provided then this specifies (by id or name)
+the star at the center of the region of the catalog to keep; stars
+outside the region specified are discarded from the catalog.
+
+If this option is not provided then the right-ascension and
+declination arguments will be used, if required.
+",
+    );
+
     let list_subcmd = Command::new("list").about("Lists the stars in the catalog");
+
     let find_subcmd = Command::new("find").about("Find stars in the catalog and display them");
-    let find_subcmd = cmdline::add_stars_arg(find_subcmd);
+    let find_subcmd = cmdline::add_stars_arg(
+        find_subcmd,
+        "An arbitrary list of star names/ids.
+
+The catalog will be seached for the stars, and the data for each written out
+",
+    );
+
     let angle_subcmd = Command::new("angle_between").about("Find angle betwen stars");
-    let angle_subcmd = cmdline::add_stars_arg(angle_subcmd);
-    let triangle_subcmd =
-        Command::new("triangle").about("Find a triangle of stars from three angles between them");
-    let triangle_subcmd = cmdline::add_angle_arg(triangle_subcmd);
-    let triangle_subcmd = cmdline::add_angles_arg(triangle_subcmd);
-    let write_subcmd = Command::new("write").about("Write out the catalog");
-    let write_subcmd = cmdline::add_output_arg(write_subcmd);
+    let angle_subcmd = cmdline::add_stars_arg(
+        angle_subcmd,
+        "An arbitrary list of star names/ids.
 
-    let image_subcmd = Command::new("image").about("Generate an image");
-    let image_subcmd = cmdline::add_output_arg(image_subcmd);
-    let image_subcmd = cmdline::add_width_arg(image_subcmd);
-    let image_subcmd = cmdline::add_height_arg(image_subcmd);
-    let image_subcmd = cmdline::add_right_ascension_arg(image_subcmd);
-    let image_subcmd = cmdline::add_declination_arg(image_subcmd);
-    let image_subcmd = cmdline::add_star_arg(image_subcmd);
-    let image_subcmd = cmdline::add_up_arg(image_subcmd);
-    let image_subcmd = cmdline::add_angle_arg(image_subcmd);
-    let image_subcmd = cmdline::add_fov_arg(image_subcmd);
+The angle between every pair of stars is determined and written out
+",
+    );
 
-    let cmd = cmdline::add_catalog_arg(cmd);
-    let cmd = cmdline::add_magnitude_arg(cmd);
-    let cmd = cmdline::add_names_arg(cmd);
-    let cmd = cmdline::add_right_ascension_arg(cmd);
-    let cmd = cmdline::add_declination_arg(cmd);
-    let cmd = cmdline::add_angle_arg(cmd);
-    let cmd = cmdline::add_star_arg(cmd);
+    let triangle_subcmd = Command::new("triangle").about(
+        "Find sets of triangles of stars from three angles between them
+
+The catalog is searched for all triplets of stars that match the
+specified angular separation to the tolerance provided.
+",
+    );
+
+    let triangle_subcmd = cmdline::add_angle_arg(
+        triangle_subcmd,
+        "Maximum angular separation to search within
+
+This provides the angle, in degrees, within which the actual angular
+separation of the stars must match that provided by the 'angles'
+option.
+
+The default is 0.1 degrees
+",
+    );
+
+    let triangle_subcmd = cmdline::add_angles_arg(
+        triangle_subcmd,
+        "Three angles expected between the three stars
+
+Three angles *must* be provided, in degrees.
+
+The catalog is searched for sets of three stars A, B and C where the
+angle between A and B is the first angle provided to the command; the
+angle between A and C is the second angle provided; and the angle
+between B and C is the third angle.
+
+The tolerance (in absolute difference in degrees) for the search is
+provided by the 'angle' option to the triangle command.
+",
+    );
+
+    let write_subcmd =
+        Command::new("write").about("Write out the catalog (after star region selection)");
+    let write_subcmd = cmdline::add_output_arg(
+        write_subcmd,
+        "Filename to write the contentst of the catalog to
+
+If the filename has a '.json' extension then a JSON format file is written.
+
+If the filename has a '.pst' extension then a Postcard format file is
+written (if the 'postcard' feature is enabled).
+",
+    );
+
+    let image_subcmd = Command::new("image").about("Generate an image of part of the sky");
+    let image_subcmd = cmdline::add_output_arg(image_subcmd, "Specify the output image filaname.
+
+This can have either a '.png' or a '.jpg' extension; PNG files are better for star images as jpeg compression artefacts are considerable for star fields.
+");
+
+    let image_subcmd = cmdline::add_width_arg(
+        image_subcmd,
+        "The width in pixels of the image to produce.
+
+The default value is 512 pixels
+",
+    );
+
+    let image_subcmd = cmdline::add_height_arg(
+        image_subcmd,
+        "The height in pixels of the image to produce.
+
+The default value is 512 pixels
+",
+    );
+
+    let image_subcmd = cmdline::add_right_ascension_arg(
+        image_subcmd,
+        "The right ascension of the center of the image
+
+Specifies the right ascension in degrees that of the direction of the
+center of the image. This is not used if the 'star' option is
+provided.
+
+The default value is 0.
+",
+    );
+
+    let image_subcmd = cmdline::add_declination_arg(
+        image_subcmd,
+        "The declination of the center of the image
+
+Specifies the declination in degrees that of the direction of the
+center of the image. This is not used if the 'star' option is
+provided.
+
+The default value is 0.
+",
+    );
+
+    let image_subcmd = cmdline::add_star_arg(
+        image_subcmd,
+        "Star name or id to center the image on
+
+If this option is not provided then the right ascension and
+declination are used.
+",
+    );
+
+    let image_subcmd = cmdline::add_up_arg(
+        image_subcmd,
+        "Star name or id of the default 'up' of the image
+
+If this is not specified then the default 'up' is in the direction of increasing
+declination without changing right ascension (north)
+
+Note that 'angle' is applied *AFTER* this.
+",
+    );
+
+    let image_subcmd = cmdline::add_angle_arg(
+        image_subcmd,
+        "Angle to rotate 'up' by.
+
+After selecting the default 'up' direction for the image, rotate anticlockwise by this angle.
+
+This is in degrees, and defaults to 0.
+",
+    );
+
+    let image_subcmd = cmdline::add_fov_arg(
+        image_subcmd,
+        "The horizontal field of view of the image
+
+This is in degrees, and defaults to 60.
+",
+    );
 
     let cmd = cmd.subcommand(list_subcmd);
     let cmd = cmd.subcommand(find_subcmd);
     let cmd = cmd.subcommand(angle_subcmd);
     let cmd = cmd.subcommand(triangle_subcmd);
     let cmd = cmd.subcommand(write_subcmd);
+
     #[cfg(feature = "image")]
     let cmd = { cmd.subcommand(image_subcmd) };
     #[cfg(not(feature = "image"))]
@@ -294,8 +504,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
         angles_to_find[i] = a / 180.0 * std::f64::consts::PI;
     }
 
-    // let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;
-    let max_angle_delta = cmdline::angle(matches, 0.0);
+    let max_angle_delta = cmdline::angle(matches, 0.1);
 
     let subcube_iter = Subcube::iter_all();
     let r = catalog.find_star_triangles(subcube_iter, &angles_to_find, max_angle_delta);
@@ -341,12 +550,138 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+// tan_fov is frame mm width / focal length in mm
+#[cfg(feature = "image")]
+
+struct ImageView {
+    width: u32,
+    height: u32,
+    tan_fov: f64,
+    orient: Quat,
+    image: image::DynamicImage,
+}
+impl ImageView {
+    fn pxy_of_vec(&self, v: &Vec3) -> Option<(u32, u32)> {
+        if v[2] > 0. {
+            return None;
+        }
+        let tx = -v[0] / v[2];
+        let ty = -v[1] / v[2];
+        let x = (self.width as f64) * (0.5 + tx / self.tan_fov);
+        let y = (self.height as f64) * (0.5 - ty / self.tan_fov);
+        if x < 0. || x >= self.width as f64 {
+            return None;
+        }
+        if y < 0. || y >= self.height as f64 {
+            return None;
+        }
+        Some((x as u32, y as u32))
+    }
+    fn draw_star(&mut self, s: &Star) {
+        let v = self.orient.apply3(&s.vector);
+        if let Some(xy) = self.pxy_of_vec(&v) {
+            let (r, g, b) = Star::temp_to_rgb(s.temp());
+            let color = [
+                (r.clamp(0., 1.) * 255.9).floor() as u8,
+                (g.clamp(0., 1.) * 255.9).floor() as u8,
+                (b.clamp(0., 1.) * 255.9).floor() as u8,
+                0,
+            ]
+            .into();
+            self.draw_round_star(xy.0, xy.1, color, s.mag);
+        }
+    }
+    fn draw_grid(&mut self) {
+        use image::GenericImage;
+        let color_0 = [100, 10, 10, 0].into();
+        let color_1 = [10, 100, 10, 0].into();
+        for de_i in 0..180 {
+            let de = ((de_i as f64) / 90.0 - 1.0) * std::f64::consts::PI;
+            let color = {
+                if de_i % 10 == 0 {
+                    color_1
+                } else {
+                    color_0
+                }
+            };
+            for ra_i in 0..3600 {
+                let ra = (ra_i as f64) / 1800.0 * std::f64::consts::PI;
+                let v = Star::vec_of_ra_de(ra, de);
+                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v)) {
+                    self.image.put_pixel(x, y, color);
+                }
+            }
+        }
+        for ra_i in 0..360 {
+            let ra = (ra_i as f64) / 180.0 * std::f64::consts::PI;
+            let color = {
+                if ra_i % 10 == 0 {
+                    color_1
+                } else {
+                    color_0
+                }
+            };
+            for de_i in 0..1800 {
+                let de = ((de_i as f64) / 900.0 - 1.0) * std::f64::consts::PI;
+                let v = Star::vec_of_ra_de(ra, de);
+                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v)) {
+                    self.image.put_pixel(x, y, color);
+                }
+            }
+        }
+    }
+    fn draw_cross(&mut self, x: u32, y: u32, color: image::Rgba<u8>, mag: f32) {
+        use image::GenericImage;
+        let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
+        // draw a cross
+        for dx in 0..(2 * size + 1) {
+            if x + dx >= size && x + dx - size < self.width {
+                self.image.put_pixel(x + dx - size, y, color);
+            }
+        }
+        for dy in 0..(2 * size + 1) {
+            if y + dy >= size && y + dy - size < self.height {
+                self.image.put_pixel(x, y + dy - size, color);
+            }
+        }
+    }
+    fn draw_round_star(&mut self, x: u32, y: u32, color: image::Rgba<u8>, mag: f32) {
+        use image::GenericImage;
+        let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
+        for dx in 0..size + 1 {
+            for dy in 0..size + 1 {
+                if dx * dx + dy * dy > size * size {
+                    continue;
+                }
+                if x + dx < self.width {
+                    if y + dy < self.height {
+                        self.image.put_pixel(x + dx, y + dy, color);
+                    }
+                    if y > dy {
+                        self.image.put_pixel(x + dx, y - dy, color);
+                    }
+                }
+                if x > dx {
+                    if y + dy < self.height {
+                        self.image.put_pixel(x - dx, y + dy, color);
+                    }
+                    if y > dy {
+                        self.image.put_pixel(x - dx, y - dy, color);
+                    }
+                }
+            }
+        }
+    }
+    fn take(self) -> image::DynamicImage {
+        self.image
+    }
+}
 fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     let _ = &catalog;
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan();
+        let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan() * 2.0;
         let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
@@ -361,71 +696,23 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
             up = catalog[index].vector - v;
         }
-        let avg = Quat::look_at(&v, &up);
-        let avg = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * avg;
+        let orient = Quat::look_at(&v, &up);
+        let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
 
         let width = cmdline::width(matches, 512) as u32;
         let height = cmdline::height(matches, 512) as u32;
+        let image = image::DynamicImage::new_rgb8(width, height);
+        let mut image_view = ImageView {
+            width,
+            height,
+            tan_fov,
+            orient,
+            image,
+        };
         let output_filename: PathBuf = cmdline::output(matches).into();
 
-        // tan_fov is frame mm width / focal length in mm
-        fn pxy_of_vec(width: u32, height: u32, tan_fov: f64, v: &Vec3) -> Option<(u32, u32)> {
-            if v[2] > 0. {
-                return None;
-            }
-            let tx = v[0];
-            let ty = v[1];
-            let x = (width as f64) * (0.5 + tx / tan_fov);
-            let y = (height as f64) * (0.5 - ty / tan_fov);
-            if x < 0. || x >= width as f64 {
-                return None;
-            }
-            if y < 0. || y >= height as f64 {
-                return None;
-            }
-            Some((x as u32, y as u32))
-        }
-
-        let mut image = image::DynamicImage::new_rgb8(width, height);
-
         if true {
-            use image::GenericImage;
-            let color_0 = [100, 10, 10, 0].into();
-            let color_1 = [10, 100, 10, 0].into();
-            for de_i in 0..180 {
-                let de = ((de_i as f64) / 90.0 - 1.0) * std::f64::consts::PI;
-                let color = {
-                    if de_i % 10 == 0 {
-                        color_1
-                    } else {
-                        color_0
-                    }
-                };
-                for ra_i in 0..3600 {
-                    let ra = (ra_i as f64) / 1800.0 * std::f64::consts::PI;
-                    let v = Star::vec_of_ra_de(ra, de);
-                    if let Some((x, y)) = pxy_of_vec(width, height, tan_fov, &avg.apply3(&v)) {
-                        image.put_pixel(x, y, color);
-                    }
-                }
-            }
-            for ra_i in 0..360 {
-                let ra = (ra_i as f64) / 180.0 * std::f64::consts::PI;
-                let color = {
-                    if ra_i % 10 == 0 {
-                        color_1
-                    } else {
-                        color_0
-                    }
-                };
-                for de_i in 0..1800 {
-                    let de = ((de_i as f64) / 900.0 - 1.0) * std::f64::consts::PI;
-                    let v = Star::vec_of_ra_de(ra, de);
-                    if let Some((x, y)) = pxy_of_vec(width, height, tan_fov, &avg.apply3(&v)) {
-                        image.put_pixel(x, y, color);
-                    }
-                }
-            }
+            image_view.draw_grid();
         }
 
         let subcubes = Subcube::iter_all();
@@ -436,72 +723,10 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
             if !s.brighter_than(7.0) {
                 continue;
             }
-            let v = avg.apply3(&s.vector);
-            if let Some(xy) = pxy_of_vec(width, height, tan_fov, &v) {
-                let (r, g, b) = Star::temp_to_rgb(s.temp());
-                let color = [
-                    (r.clamp(0., 1.) * 255.9).floor() as u8,
-                    (g.clamp(0., 1.) * 255.9).floor() as u8,
-                    (b.clamp(0., 1.) * 255.9).floor() as u8,
-                    0,
-                ]
-                .into();
-                draw_star(&mut image, width, height, xy.0, xy.1, color, s.mag);
-            }
+            image_view.draw_star(s);
         }
+        let image = image_view.take();
         image.save(output_filename)?;
     }
     Ok(())
-}
-
-#[cfg(feature = "image")]
-fn draw_star(
-    image: &mut image::DynamicImage,
-    width: u32,
-    height: u32,
-    x: u32,
-    y: u32,
-    color: image::Rgba<u8>,
-    mag: f32,
-) {
-    use image::GenericImage;
-    let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
-    if false {
-        // draw a cross
-        for dx in 0..(2 * size + 1) {
-            if x + dx >= size && x + dx - size < width {
-                image.put_pixel(x + dx - size, y, color);
-            }
-        }
-        for dy in 0..(2 * size + 1) {
-            if y + dy >= size && y + dy - size < height {
-                image.put_pixel(x, y + dy - size, color);
-            }
-        }
-    } else {
-        // draw a circle
-        for dx in 0..size + 1 {
-            for dy in 0..size + 1 {
-                if dx * dx + dy * dy > size * size {
-                    continue;
-                }
-                if x + dx < width {
-                    if y + dy < height {
-                        image.put_pixel(x + dx, y + dy, color);
-                    }
-                    if y > dy {
-                        image.put_pixel(x + dx, y - dy, color);
-                    }
-                }
-                if x > dx {
-                    if y + dy < height {
-                        image.put_pixel(x - dx, y + dy, color);
-                    }
-                    if y > dy {
-                        image.put_pixel(x - dx, y - dy, color);
-                    }
-                }
-            }
-        }
-    }
 }
