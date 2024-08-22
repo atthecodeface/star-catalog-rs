@@ -1,9 +1,7 @@
-use std::collections::HashMap;
 use std::error::Error;
 
-use geo_nd::{Quaternion, Vector};
 use star_catalog::Subcube;
-use star_catalog::{hipparcos, Catalog, Quat, Star, Vec3};
+use star_catalog::{hipparcos, Catalog};
 
 #[test]
 fn test_find_stars() -> Result<(), Box<dyn Error>> {

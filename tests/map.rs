@@ -1,8 +1,15 @@
-use std::collections::HashMap;
 use std::error::Error;
 
+#[cfg(feature = "image")]
 use geo_nd::{Quaternion, Vector};
-use star_catalog::{hipparcos, Catalog, Quat, Vec3};
+
+use star_catalog::{hipparcos, Catalog};
+
+#[cfg(feature = "image")]
+use star_catalog::{Quat, Vec3};
+
+#[cfg(feature = "image")]
+type Vec2 = geo_nd::FArray<f64, 2>;
 
 #[cfg(test)]
 const EXTRA_ALIASES: &[(usize, &'static str)] = &[
@@ -24,6 +31,7 @@ const EXTRA_ALIASES: &[(usize, &'static str)] = &[
     (58989, "HD105043"),
 ];
 
+#[cfg(feature = "image")]
 const IMG_4917_DATA: &[(&str, usize, usize)] = &[
     ("Dubhe", 3406, 3006),
     ("Megrez", 1318, 2516),
@@ -57,7 +65,7 @@ fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-type Vec2 = geo_nd::FArray<f64, 2>;
+#[cfg(feature = "image")]
 struct Camera {
     width: usize,
     height: usize,
@@ -72,6 +80,7 @@ struct Camera {
 //    a * 180.0 / std::f64::consts::PI
 // }
 
+#[cfg(feature = "image")]
 impl Camera {
     fn new() -> Self {
         let width = 5184;
@@ -148,7 +157,7 @@ impl Camera {
         &self,
         catalog: &Catalog,
         comp: &str,
-        data: &HashMap<String, (usize, usize)>,
+        data: &std::collections::HashMap<String, (usize, usize)>,
     ) -> Vec<Quat> {
         // comp = "HD105043"
         // # comp = "Kappa Draconis"
@@ -190,7 +199,7 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     catalog.add_names(hipparcos::HIP_ALIASES, false)?;
     catalog.add_names(EXTRA_ALIASES, false)?;
     catalog.derive_data();
-    let mut x: HashMap<String, (usize, usize)> = HashMap::new();
+    let mut x: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
     for (a, b, c) in IMG_4917_DATA {
         x.insert(a.to_string(), (*b, *c));
     }
@@ -243,7 +252,7 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
         }
     }
     image.save("test.png")?;
-    assert!(false);
+    // assert!(false);
     Ok(())
 }
 

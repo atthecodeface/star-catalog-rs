@@ -4,13 +4,22 @@ STARS = hipparcos.json -m 7.5
 # 15mm lens on Rebelt T2i is 107 degree horizontal FOV
 VIEW = -d 70 -f 107 -W 2000 -H 2000 -a 340
 
-.PHONY:
+.PHONY: help
 help:
 	@echo "Help goes here"
 
-.PHONY:
+.PHONY: test_all
+test_all:
+	cargo test --release
+	cargo test --release --features image
+	cargo test --release --features postcard
+	cargo test --release --features csv
+	cargo test --release --features hipp_bright
+	cargo test --release --features image,postcard,csv,hipp_bright
+
+.PHONY: release
 release:
-	cargo build --release --features image
+	cargo build --release --features image,postcard,csv,hipp_bright
 
 all: release
 	${BINARY} ${STARS} image -r 0 $(VIEW) -o winter_hexagon_0.png

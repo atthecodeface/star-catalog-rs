@@ -83,7 +83,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     let matches = cmd.get_matches();
 
-    let magnitude = cmdline::magnitude(&matches);
+    let magnitude = cmdline::magnitude(&matches, 12.0);
     let catalog_filename: PathBuf = cmdline::catalog(&matches).into();
 
     let mut catalog = {
@@ -160,13 +160,13 @@ fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-    let angle = cmdline::angle(&matches);
+    let angle = cmdline::angle(&matches, 0.0);
     if angle > 0. {
         catalog.derive_data();
         let mut ids: Vec<usize> = vec![];
         let mut v = Star::vec_of_ra_de(
-            cmdline::right_ascension(&matches),
-            cmdline::declination(&matches),
+            cmdline::right_ascension(&matches, 0.),
+            cmdline::declination(&matches, 0.),
         );
         if let Some(index) = find_id_or_name(&catalog, cmdline::star(&matches).map(|a| a.as_str()))?
         {
@@ -295,7 +295,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
     }
 
     // let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;
-    let max_angle_delta = cmdline::angle(matches);
+    let max_angle_delta = cmdline::angle(matches, 0.0);
 
     let subcube_iter = Subcube::iter_all();
     let r = catalog.find_star_triangles(subcube_iter, &angles_to_find, max_angle_delta);
@@ -346,10 +346,10 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov = (cmdline::fov(matches) / 2.0).tan();
+        let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan();
         let mut v = Star::vec_of_ra_de(
-            cmdline::right_ascension(matches),
-            cmdline::declination(matches),
+            cmdline::right_ascension(matches, 0.),
+            cmdline::declination(matches, 0.),
         );
         if let Some(index) = find_id_or_name(&catalog, cmdline::star(matches).map(|a| a.as_str()))?
         {
@@ -357,15 +357,15 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         }
 
         let mut up = [0., 0., 1.].into();
-        let angle = cmdline::angle(matches);
+        let angle = cmdline::angle(matches, 0.0);
         if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
             up = catalog[index].vector - v;
         }
         let avg = Quat::look_at(&v, &up);
         let avg = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * avg;
 
-        let width = cmdline::width(matches) as u32;
-        let height = cmdline::height(matches) as u32;
+        let width = cmdline::width(matches, 512) as u32;
+        let height = cmdline::height(matches, 512) as u32;
         let output_filename: PathBuf = cmdline::output(matches).into();
 
         // tan_fov is frame mm width / focal length in mm
