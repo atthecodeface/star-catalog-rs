@@ -183,6 +183,7 @@ mod star;
 pub use star::Star;
 
 mod catalog;
+pub mod constellations;
 pub mod hipparcos;
 pub mod iau;
 pub use catalog::{Catalog, CatalogIndex};

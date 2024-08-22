@@ -8,7 +8,7 @@ use star_catalog::{hipparcos, Catalog, Quat, Star, Vec3};
 #[test]
 fn test_find_stars() -> Result<(), Box<dyn Error>> {
     // Probably we should be testing with mag 5; we can test with 7 though
-    let magnitude = 7.0;
+    let magnitude = 5.0;
     let s = std::fs::read_to_string("hipparcos.json")?;
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.retain(|s| s.brighter_than(magnitude));

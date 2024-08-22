@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use clap::{ArgMatches, Command};
 use geo_nd::{Quaternion, Vector};
-use star_catalog::{Catalog, Quat, Star, Subcube, Vec3};
+use star_catalog::{Catalog, CatalogIndex, Quat, Star, Subcube, Vec3};
 
 mod cmdline {
     use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
+    use star_catalog::{Catalog, CatalogIndex};
 
     //fp add_catalog_arg
     pub fn add_catalog_arg(cmd: Command) -> Command {
@@ -179,6 +180,7 @@ mod cmdline {
     pub fn output(matches: &ArgMatches) -> String {
         matches.get_one::<String>("output").unwrap().to_string()
     }
+
     //fp add_stars_arg
     pub fn add_stars_arg(cmd: Command) -> Command {
         cmd.arg(
@@ -190,20 +192,65 @@ mod cmdline {
     pub fn stars(matches: &ArgMatches) -> Option<ValuesRef<'_, String>> {
         matches.get_many::<String>("stars")
     }
+
+    //fp add_star_arg
+    pub fn add_star_arg(cmd: Command) -> Command {
+        cmd.arg(
+            Arg::new("star")
+                .long("star")
+                .short('s')
+                .help("Star to use instead of right ascension and declination")
+                .action(ArgAction::Set),
+        )
+    }
+    pub fn star<'a>(matches: &'a ArgMatches) -> Option<&'a String> {
+        matches.get_one::<String>("star")
+    }
+
+    //fp add_up_arg
+    pub fn add_up_arg(cmd: Command) -> Command {
+        cmd.arg(
+            Arg::new("up")
+                .long("up")
+                .short('u')
+                .help("Up to use for an image")
+                .action(ArgAction::Set),
+        )
+    }
+    pub fn up<'a>(matches: &'a ArgMatches) -> Option<&'a String> {
+        matches.get_one::<String>("up")
+    }
+}
+
+fn find_id_or_name(
+    catalog: &Catalog,
+    s: Option<&str>,
+) -> Result<Option<CatalogIndex>, anyhow::Error> {
+    let Some(s) = s else {
+        return Ok(None);
+    };
+    match s.parse::<usize>() {
+        Err(_) => {
+            if let Some(s) = catalog.find_name(s) {
+                Ok(Some(s))
+            } else {
+                Err(anyhow!("Could not find star with name {s}"))
+            }
+        }
+        Ok(id) => {
+            if let Some(s) = catalog.find_sorted(id) {
+                Ok(Some(s))
+            } else {
+                Err(anyhow!("Could not find star with id {id}"))
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), anyhow::Error> {
     let cmd = Command::new("star_catalog")
         .about("Star catlog")
         .version("0.1.0");
-
-    #[allow(unused_assignments)]
-    let mut has_image = false;
-    #[cfg(feature = "image")]
-    {
-        has_image = true;
-    }
-    has_image = has_image;
 
     let list_subcmd = Command::new("list").about("Lists the stars in the catalog");
     let find_subcmd = Command::new("find").about("Find stars in the catalog and display them");
@@ -222,6 +269,8 @@ fn main() -> Result<(), anyhow::Error> {
     let image_subcmd = cmdline::add_height_arg(image_subcmd);
     let image_subcmd = cmdline::add_right_ascension_arg(image_subcmd);
     let image_subcmd = cmdline::add_declination_arg(image_subcmd);
+    let image_subcmd = cmdline::add_star_arg(image_subcmd);
+    let image_subcmd = cmdline::add_up_arg(image_subcmd);
     let image_subcmd = cmdline::add_angle_arg(image_subcmd);
     let image_subcmd = cmdline::add_fov_arg(image_subcmd);
 
@@ -231,19 +280,15 @@ fn main() -> Result<(), anyhow::Error> {
     let cmd = cmdline::add_right_ascension_arg(cmd);
     let cmd = cmdline::add_declination_arg(cmd);
     let cmd = cmdline::add_angle_arg(cmd);
+    let cmd = cmdline::add_star_arg(cmd);
 
     let cmd = cmd.subcommand(list_subcmd);
     let cmd = cmd.subcommand(find_subcmd);
     let cmd = cmd.subcommand(angle_subcmd);
     let cmd = cmd.subcommand(triangle_subcmd);
     let cmd = cmd.subcommand(write_subcmd);
-    let cmd = {
-        if has_image {
-            cmd.subcommand(image_subcmd)
-        } else {
-            cmd
-        }
-    };
+    #[cfg(feature = "image")]
+    let cmd = { cmd.subcommand(image_subcmd) };
 
     let matches = cmd.get_matches();
 
@@ -299,15 +344,44 @@ fn main() -> Result<(), anyhow::Error> {
     };
 
     catalog.sort();
+
+    if let Some(names_filename) = cmdline::names(&matches) {
+        let names_filename: PathBuf = names_filename.into();
+        match names_filename.extension().and_then(|x| x.to_str()) {
+            Some("json") => {
+                let s = std::fs::read_to_string(names_filename)?;
+                let id_names: Vec<(usize, String)> = serde_json::from_str(&s)?;
+                catalog.add_names(&id_names, true)?;
+            }
+            None => {
+                if names_filename.as_os_str().as_encoded_bytes() == b"hipp" {
+                    catalog.add_names(&&star_catalog::hipparcos::HIP_ALIASES, true)?;
+                } else if names_filename.as_os_str().as_encoded_bytes() == b"collated" {
+                    catalog.add_names(&&star_catalog::hipparcos::HIP_COLLATED_ALIASES, true)?;
+                } else {
+                    Err(anyhow!("Unknown builtin file {}", names_filename.display()))?
+                }
+            }
+            _ => Err(anyhow!(
+                "Unknown extension for names filename {}",
+                names_filename.display()
+            ))?,
+        }
+    }
+
     let angle = cmdline::angle(&matches);
     if angle > 0. {
         catalog.derive_data();
         let mut ids: Vec<usize> = vec![];
-        dbg!(angle);
-        let v = Star::vec_of_ra_de(
+        let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(&matches),
             cmdline::declination(&matches),
         );
+        if let Some(index) = find_id_or_name(&catalog, cmdline::star(&matches).map(|a| a.as_str()))?
+        {
+            v = catalog[index].vector;
+        }
+
         let cos_angle = angle.cos();
         for s in catalog.iter_stars() {
             if s.vector.dot(&v) >= cos_angle {
@@ -316,12 +390,6 @@ fn main() -> Result<(), anyhow::Error> {
         }
         catalog.retain(|s| ids.binary_search(&s.id).is_ok());
         catalog.sort();
-    }
-
-    if let Some(names_filename) = cmdline::names(&matches) {
-        let s = std::fs::read_to_string(names_filename)?;
-        let id_names: Vec<(usize, String)> = serde_json::from_str(&s)?;
-        catalog.add_names(&id_names, true)?;
     }
 
     catalog.sort();
@@ -364,21 +432,14 @@ fn display_star(s: &Star) {
 fn find(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     if let Some(stars) = cmdline::stars(matches) {
         for s in stars {
-            match s.parse::<usize>() {
-                Err(_) => {
-                    if let Some(s) = catalog.find_name(s) {
-                        display_star(&catalog[s]);
-                    } else {
-                        eprintln!("Could not find star with name {s}");
-                    }
+            match find_id_or_name(&catalog, Some(s)) {
+                Ok(Some(index)) => {
+                    display_star(&catalog[index]);
                 }
-                Ok(id) => {
-                    if let Some(s) = catalog.find_sorted(id) {
-                        display_star(&catalog[s]);
-                    } else {
-                        eprintln!("Could not find star with id {id}");
-                    }
+                Err(e) => {
+                    eprintln!("{e}");
                 }
+                _ => (),
             }
         }
         // display_star(s);
@@ -451,7 +512,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
         let a01 = catalog[*a].cos_angle_between(&catalog[*b]).acos() * 180.0 / std::f64::consts::PI;
         let a02 = catalog[*a].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
         let a12 = catalog[*b].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
-        eprintln!(
+        println!(
             "{}, {}, {} : {} {} {}",
             catalog[*a].id, catalog[*b].id, catalog[*c].id, a01, a02, a12,
         );
@@ -473,7 +534,7 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         Some("json") => {
             let mut f = std::fs::File::create(output_filename)?;
             let s = serde_json::to_string_pretty(&catalog)?.replace(" ", "");
-            f.write(s.as_bytes())?;
+            f.write_all(s.as_bytes())?;
         }
         #[cfg(feature = "postcard")]
         Some("pst") => {
@@ -494,11 +555,23 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     #[cfg(feature = "image")]
     {
         let tan_fov = (cmdline::fov(&matches) / 2.0).tan();
-        let v = Star::vec_of_ra_de(
+        let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(&matches),
             cmdline::declination(&matches),
         );
+        if let Some(index) = find_id_or_name(&catalog, cmdline::star(&matches).map(|a| a.as_str()))?
+        {
+            v = catalog[index].vector;
+        }
+
+        let mut up = [0., 0., 1.].into();
         let angle = cmdline::angle(&matches);
+        if let Some(index) = find_id_or_name(&catalog, cmdline::up(&matches).map(|a| a.as_str()))? {
+            up = catalog[index].vector - v;
+        }
+        let avg = Quat::look_at(&v, &up);
+        let avg = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * avg;
+
         let width = cmdline::width(&matches) as u32;
         let height = cmdline::height(&matches) as u32;
         let output_filename: PathBuf = cmdline::output(&matches).into();
@@ -520,10 +593,6 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
             }
             Some((x as u32, y as u32))
         }
-
-        let up = [0., 0., 1.].into();
-        let avg = Quat::look_at(&v, &up);
-        let avg = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * avg;
 
         let mut image = image::DynamicImage::new_rgb8(width, height);
 

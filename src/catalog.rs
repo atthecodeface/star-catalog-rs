@@ -466,7 +466,7 @@ where
             let Some(subcube) = self.subcube else {
                 return None;
             };
-            while self.i < self.catalog[subcube].len() {
+            if self.i < self.catalog[subcube].len() {
                 let i = self.i;
                 self.i += 1;
                 return Some(&self.catalog.stars[self.catalog[subcube][i].0]);

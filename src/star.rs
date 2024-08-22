@@ -95,7 +95,7 @@ impl Star {
     /// Get an temperature for the star
     pub fn temp(&self) -> f32 {
         let t = 4600.0 * (1.0 / (1.7 + 0.92 * self.bv) + 1.0 / (0.62 + 0.92 * self.bv));
-        eprintln!("{} {}", self.bv, t);
+        // eprintln!("{} {}", self.bv, t);
         t
     }
 
