@@ -61,6 +61,8 @@ The subcommands supported are:
 
  * image: Generate an image of the sky
 
+ * cubemap: Generate a cubemap of the sky (6 full faces in a 4x3 image of faces)
+
  * angle_between: Print the angles between a set of stars
 
  * triangle: Find a triangle of stars from three angles (within an angular delta)
@@ -138,12 +140,24 @@ The 'image' subcommand generates an image of a region of the star map;
 currently it is fairly primitive. Stars are colored according to B-V
 (temperature) and sized according to magnitude.
 
-THe region to display is specified by options to the 'image'
+The region to display is specified by options to the 'image'
 subcommand of -r, -d for right ascension, declination to provide a
 direction; -a rotates the 'up' vector from north; -W and -H provide
 the width and height of the image; -f provides a field of view of the
 *width* of the image. The image produced is written to an output
 filename provided by -o.
+
+Support is provided for jpeg and png images
+
+### Subcommand `cubemap`
+
+This is only supported if the binary is compiled with the 'image' feature.
+
+The 'cubemap subcommand generates an image of the whole star map.
+
+By default the cubemap has the ecliptic in the centre; if an orientation is specified then the cubemap has one face with that orientation and builds the rest of the cubemap appropriately.
+
+The same options as for image (other than field-of-view) apply to cubemap.
 
 Support is provided for jpeg and png images
 

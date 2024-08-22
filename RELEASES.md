@@ -1,3 +1,13 @@
+# Release 0.0.6 (2024-08-22)
+
+- Add 'collated' names as a built-in
+
+- Add 'cubemap' to generate a full cubemap from a star position
+
+- Fix image generation (field of view etc)
+
+- Add longhelp
+
 # Release 0.0.5 (2024-08-21)
 
 - Add 'triangle' to star_catalog binary to allow searching for a triangle of stars

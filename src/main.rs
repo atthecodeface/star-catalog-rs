@@ -280,6 +280,90 @@ This is in degrees, and defaults to 60.
 ",
     );
 
+    let cubemap_subcmd = Command::new("cubemap").about("Generate an cubemap of part of the sky");
+    let cubemap_subcmd = cmdline::add_output_arg(
+        cubemap_subcmd,
+        "Specify the output cubemap filaname.
+
+This can have either a '.png' or a '.jpg' extension; PNG files are
+better for star cubemaps as jpeg compression artefacts are
+considerable for star fields.
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_width_arg(
+        cubemap_subcmd,
+        "The width in pixels of each face of the cubemap to produce.
+
+The cubemap is 4 times this width.
+
+The default value is 512 pixels
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_height_arg(
+        cubemap_subcmd,
+        "The height in pixels of each face of the cubemap to produce.
+
+The cubemap is 3 times this height.
+
+The default value is 512 pixels
+",
+    );
+    let cubemap_subcmd = cmdline::add_right_ascension_arg(
+        cubemap_subcmd,
+        "The right ascension of the center of the cubemap
+
+Specifies the right ascension in degrees that of the direction of the
+center of the cubemap. This is not used if the 'star' option is
+provided.
+
+The default value is 0.
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_declination_arg(
+        cubemap_subcmd,
+        "The declination of the center of the cubemap
+
+Specifies the declination in degrees that of the direction of the
+center of the cubemaop. This is not used if the 'star' option is
+provided.
+
+The default value is 0.
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_star_arg(
+        cubemap_subcmd,
+        "Star name or id to center the cubemap on
+
+If this option is not provided then the right ascension and
+declination are used.
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_up_arg(
+        cubemap_subcmd,
+        "Star name or id of the default 'up' of the cubemap
+
+If this is not specified then the default 'up' is in the direction of increasing
+declination without changing right ascension (north)
+
+Note that 'angle' is applied *AFTER* this.
+",
+    );
+
+    let cubemap_subcmd = cmdline::add_angle_arg(
+        cubemap_subcmd,
+        "Angle to rotate 'up' by.
+
+After selecting the default 'up' direction for the cubemap, rotate anticlockwise by this angle.
+
+This is in degrees, and defaults to 0.
+",
+    );
+
     let cmd = cmd.subcommand(list_subcmd);
     let cmd = cmd.subcommand(find_subcmd);
     let cmd = cmd.subcommand(angle_subcmd);
@@ -288,8 +372,13 @@ This is in degrees, and defaults to 60.
 
     #[cfg(feature = "image")]
     let cmd = { cmd.subcommand(image_subcmd) };
+    #[cfg(feature = "image")]
+    let cmd = { cmd.subcommand(cubemap_subcmd) };
+
     #[cfg(not(feature = "image"))]
     let _ = image_subcmd;
+    #[cfg(not(feature = "image"))]
+    let _ = cubemap_subcmd;
 
     let matches = cmd.get_matches();
 
@@ -401,6 +490,9 @@ This is in degrees, and defaults to 60.
         }
         Some(("image", sub_matches)) => {
             image(catalog, sub_matches)?;
+        }
+        Some(("cubemap", sub_matches)) => {
+            cubemap(catalog, sub_matches)?;
         }
         Some(("triangle", sub_matches)) => {
             find_triangle(catalog, sub_matches)?;
@@ -556,30 +648,36 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
 struct ImageView {
     width: u32,
     height: u32,
-    tan_fov: f64,
+    x_ofs: u32,
+    y_ofs: u32,
+    tan_fov_x2: f64,
     orient: Quat,
     image: image::DynamicImage,
 }
 impl ImageView {
-    fn pxy_of_vec(&self, v: &Vec3) -> Option<(u32, u32)> {
+    fn pxy_of_vec(&self, v: &Vec3, px: f64) -> Option<(f64, f64)> {
         if v[2] > 0. {
             return None;
         }
         let tx = -v[0] / v[2];
         let ty = -v[1] / v[2];
-        let x = (self.width as f64) * (0.5 + tx / self.tan_fov);
-        let y = (self.height as f64) * (0.5 - ty / self.tan_fov);
-        if x < 0. || x >= self.width as f64 {
+        let x = (self.width as f64) * (0.5 + tx / self.tan_fov_x2);
+        let y = (self.height as f64) * (0.5 - ty / self.tan_fov_x2);
+        if x < -px || x >= self.width as f64 + px {
             return None;
         }
-        if y < 0. || y >= self.height as f64 {
+        if y < -px || y >= self.height as f64 + px {
             return None;
         }
-        Some((x as u32, y as u32))
+        Some((x, y))
+    }
+    fn put(&mut self, x: u32, y: u32, color: image::Rgba<u8>) {
+        use image::GenericImage;
+        self.image.put_pixel(x + self.x_ofs, y + self.y_ofs, color);
     }
     fn draw_star(&mut self, s: &Star) {
         let v = self.orient.apply3(&s.vector);
-        if let Some(xy) = self.pxy_of_vec(&v) {
+        if let Some(xy) = self.pxy_of_vec(&v, 100.) {
             let (r, g, b) = Star::temp_to_rgb(s.temp());
             let color = [
                 (r.clamp(0., 1.) * 255.9).floor() as u8,
@@ -592,11 +690,10 @@ impl ImageView {
         }
     }
     fn draw_grid(&mut self) {
-        use image::GenericImage;
         let color_0 = [100, 10, 10, 0].into();
         let color_1 = [10, 100, 10, 0].into();
         for de_i in 0..180 {
-            let de = ((de_i as f64) / 90.0 - 1.0) * std::f64::consts::PI;
+            let de = ((de_i as f64) / 90.0 - 1.0) * std::f64::consts::PI / 2.0;
             let color = {
                 if de_i % 10 == 0 {
                     color_1
@@ -607,8 +704,8 @@ impl ImageView {
             for ra_i in 0..3600 {
                 let ra = (ra_i as f64) / 1800.0 * std::f64::consts::PI;
                 let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v)) {
-                    self.image.put_pixel(x, y, color);
+                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v), 0.) {
+                    self.put(x as u32, y as u32, color);
                 }
             }
         }
@@ -624,50 +721,54 @@ impl ImageView {
             for de_i in 0..1800 {
                 let de = ((de_i as f64) / 900.0 - 1.0) * std::f64::consts::PI;
                 let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v)) {
-                    self.image.put_pixel(x, y, color);
+                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v), 0.) {
+                    self.put(x as u32, y as u32, color);
                 }
             }
         }
     }
     fn draw_cross(&mut self, x: u32, y: u32, color: image::Rgba<u8>, mag: f32) {
-        use image::GenericImage;
         let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
         // draw a cross
         for dx in 0..(2 * size + 1) {
             if x + dx >= size && x + dx - size < self.width {
-                self.image.put_pixel(x + dx - size, y, color);
+                self.put(x + dx - size, y, color);
             }
         }
         for dy in 0..(2 * size + 1) {
             if y + dy >= size && y + dy - size < self.height {
-                self.image.put_pixel(x, y + dy - size, color);
+                self.put(x, y + dy - size, color);
             }
         }
     }
-    fn draw_round_star(&mut self, x: u32, y: u32, color: image::Rgba<u8>, mag: f32) {
-        use image::GenericImage;
+    fn draw_round_star(&mut self, x: f64, y: f64, color: image::Rgba<u8>, mag: f32) {
         let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
         for dx in 0..size + 1 {
+            let f_dx = dx as f64;
+            let x_p_ib = x + f_dx >= 0. && x + f_dx < self.width as f64;
+            let x_m_ib = x - f_dx >= 0. && x - f_dx < self.width as f64;
+            if !x_m_ib && !x_p_ib {
+                continue;
+            }
             for dy in 0..size + 1 {
                 if dx * dx + dy * dy > size * size {
                     continue;
                 }
-                if x + dx < self.width {
-                    if y + dy < self.height {
-                        self.image.put_pixel(x + dx, y + dy, color);
-                    }
-                    if y > dy {
-                        self.image.put_pixel(x + dx, y - dy, color);
-                    }
+                let f_dy = dy as f64;
+                let y_p_ib = y + f_dy >= 0. && y + f_dy < self.height as f64;
+                let y_m_ib = y - f_dy >= 0. && y - f_dy < self.height as f64;
+
+                if x_p_ib && y_p_ib {
+                    self.put((x + f_dx) as u32, (y + f_dy) as u32, color);
                 }
-                if x > dx {
-                    if y + dy < self.height {
-                        self.image.put_pixel(x - dx, y + dy, color);
-                    }
-                    if y > dy {
-                        self.image.put_pixel(x - dx, y - dy, color);
-                    }
+                if x_p_ib && y_m_ib {
+                    self.put((x + f_dx) as u32, (y - f_dy) as u32, color);
+                }
+                if x_m_ib && y_p_ib {
+                    self.put((x - f_dx) as u32, (y + f_dy) as u32, color);
+                }
+                if x_m_ib && y_m_ib {
+                    self.put((x - f_dx) as u32, (y - f_dy) as u32, color);
                 }
             }
         }
@@ -676,12 +777,13 @@ impl ImageView {
         self.image
     }
 }
+
 fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     let _ = &catalog;
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan() * 2.0;
+        let tan_fov_x2 = (cmdline::fov(matches, 60.0) / 2.0).tan() * 2.0;
         let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
@@ -705,9 +807,11 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         let mut image_view = ImageView {
             width,
             height,
-            tan_fov,
+            tan_fov_x2,
             orient,
             image,
+            x_ofs: 0,
+            y_ofs: 0,
         };
         let output_filename: PathBuf = cmdline::output(matches).into();
 
@@ -724,6 +828,98 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
                 continue;
             }
             image_view.draw_star(s);
+        }
+        let image = image_view.take();
+        image.save(output_filename)?;
+    }
+    Ok(())
+}
+
+fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
+    let _ = &catalog;
+    let _ = matches;
+    #[cfg(feature = "image")]
+    {
+        let tan_fov_x2 = 2.;
+        let mut v = Star::vec_of_ra_de(
+            cmdline::right_ascension(matches, 0.),
+            cmdline::declination(matches, 0.),
+        );
+        if let Some(index) = find_id_or_name(&catalog, cmdline::star(matches).map(|a| a.as_str()))?
+        {
+            v = catalog[index].vector;
+        }
+        let mut up = [0., 0., 1.].into();
+        let angle = cmdline::angle(matches, 0.0);
+        if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
+            up = catalog[index].vector - v;
+        }
+        let orient = Quat::look_at(&v, &up);
+        let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
+
+        let width = cmdline::width(matches, 512) as u32;
+        let height = cmdline::height(matches, 512) as u32;
+        let image = image::DynamicImage::new_rgb8(width * 4, height * 3);
+        let mut image_view = ImageView {
+            width,
+            height,
+            tan_fov_x2,
+            orient,
+            image,
+            x_ofs: 0,
+            y_ofs: 0,
+        };
+        let output_filename: PathBuf = cmdline::output(matches).into();
+
+        for quadrant in 0..6 {
+            let (x_ofs, y_ofs, face_orient) = match quadrant {
+                0 => (
+                    0,
+                    1,
+                    Quat::look_at(&[-1., 0., 0.].into(), &[0., 0., 1.].into()),
+                ),
+                1 => (
+                    1,
+                    1,
+                    Quat::look_at(&[0., 1., 0.].into(), &[0., 0., 1.].into()),
+                ),
+                2 => (
+                    2,
+                    1,
+                    Quat::look_at(&[1., 0., 0.].into(), &[0., 0., 1.].into()),
+                ),
+                3 => (
+                    3,
+                    1,
+                    Quat::look_at(&[0., -1., 0.].into(), &[0., 0., 1.].into()),
+                ),
+                4 => (
+                    1,
+                    0,
+                    Quat::look_at(&[0., 0., 1.].into(), &[0., -1., 0.].into()),
+                ),
+                _ => (
+                    1,
+                    2,
+                    Quat::look_at(&[0., 0., -1.].into(), &[0., 1., 0.].into()),
+                ),
+            };
+            image_view.x_ofs = x_ofs * width;
+            image_view.y_ofs = y_ofs * height;
+            image_view.orient = face_orient * orient;
+            if true {
+                image_view.draw_grid();
+            }
+
+            let subcubes = Subcube::iter_all();
+            let star_iter = catalog.iter_within_subcubes(subcubes);
+
+            for s in star_iter {
+                if !s.brighter_than(7.0) {
+                    continue;
+                }
+                image_view.draw_star(s);
+            }
         }
         let image = image_view.take();
         image.save(output_filename)?;
