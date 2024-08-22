@@ -2,225 +2,13 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use clap::{ArgMatches, Command};
-use geo_nd::{Quaternion, Vector};
-use star_catalog::{Catalog, CatalogIndex, Quat, Star, Subcube, Vec3};
+use geo_nd::Vector;
+use star_catalog::{cmdline, Catalog, CatalogIndex, Star, Subcube};
 
-mod cmdline {
-    use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
-    use star_catalog::{Catalog, CatalogIndex};
-
-    //fp add_catalog_arg
-    pub fn add_catalog_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("catalog")
-                .required(true)
-                .help("Which star catalog to load")
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn catalog(matches: &ArgMatches) -> String {
-        matches.get_one::<String>("catalog").unwrap().to_string()
-    }
-
-    //fp add_width_arg
-    pub fn add_width_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("width")
-                .long("width")
-                .short('W')
-                .help("Width of image to generate ")
-                .value_parser(value_parser!(usize))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn width(matches: &ArgMatches) -> usize {
-        *matches.get_one::<usize>("width").unwrap_or(&512)
-    }
-
-    //fp add_height_arg
-    pub fn add_height_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("height")
-                .long("height")
-                .short('H')
-                .help("Height of image to generate")
-                .value_parser(value_parser!(usize))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn height(matches: &ArgMatches) -> usize {
-        *matches.get_one::<usize>("height").unwrap_or(&512)
-    }
-
-    //fp add_magnitude_arg
-    pub fn add_magnitude_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("magnitude")
-                .long("magnitude")
-                .short('m')
-                .help("Maximum magnitude")
-                .value_parser(value_parser!(f32))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn magnitude(matches: &ArgMatches) -> f32 {
-        *matches.get_one::<f32>("magnitude").unwrap_or(&12.0)
-    }
-
-    //fp add_right_ascension_arg
-    pub fn add_right_ascension_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("right_ascension")
-                .long("right_ascension")
-                .short('r')
-                .help("Right ascension")
-                .value_parser(value_parser!(f64))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn right_ascension(matches: &ArgMatches) -> f64 {
-        matches
-            .get_one::<f64>("right_ascension")
-            .map(|x| *x * std::f64::consts::PI / 180.0)
-            .unwrap_or(0.0)
-    }
-
-    //fp add_declination_arg
-    pub fn add_declination_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("declination")
-                .long("declination")
-                .short('d')
-                .help("Declination")
-                .value_parser(value_parser!(f64))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn declination(matches: &ArgMatches) -> f64 {
-        matches
-            .get_one::<f64>("declination")
-            .map(|x| *x * std::f64::consts::PI / 180.0)
-            .unwrap_or(0.0)
-    }
-
-    //fp add_angle_arg
-    pub fn add_angle_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("angle")
-                .long("angle")
-                .short('a')
-                .help("Angle")
-                .value_parser(value_parser!(f64))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn angle(matches: &ArgMatches) -> f64 {
-        matches
-            .get_one::<f64>("angle")
-            .map(|x| *x * std::f64::consts::PI / 180.0)
-            .unwrap_or(0.0)
-    }
-
-    //fp add_angles_arg
-    pub fn add_angles_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("angles")
-                .help("Angles for the command")
-                .value_parser(value_parser!(f64))
-                .action(ArgAction::Append),
-        )
-    }
-    pub fn angles(matches: &ArgMatches) -> Option<ValuesRef<'_, f64>> {
-        matches.get_many::<f64>("angles")
-    }
-
-    //fp add_fov_arg
-    pub fn add_fov_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("fov")
-                .long("fov")
-                .short('f')
-                .help("Field of view")
-                .value_parser(value_parser!(f64))
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn fov(matches: &ArgMatches) -> f64 {
-        matches
-            .get_one::<f64>("fov")
-            .map(|x| *x * std::f64::consts::PI / 180.0)
-            .unwrap_or(60.0)
-    }
-
-    //fp add_names_arg
-    pub fn add_names_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("names")
-                .long("names")
-                .short('n')
-                .help("File containing names of id")
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn names(matches: &ArgMatches) -> Option<String> {
-        matches.get_one::<String>("names").map(|s| s.to_string())
-    }
-
-    //fp add_output_arg
-    pub fn add_output_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("output")
-                .long("output")
-                .short('o')
-                .required(true)
-                .help("Which star output to load")
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn output(matches: &ArgMatches) -> String {
-        matches.get_one::<String>("output").unwrap().to_string()
-    }
-
-    //fp add_stars_arg
-    pub fn add_stars_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("stars")
-                .help("Stars to interrogate")
-                .action(ArgAction::Append),
-        )
-    }
-    pub fn stars(matches: &ArgMatches) -> Option<ValuesRef<'_, String>> {
-        matches.get_many::<String>("stars")
-    }
-
-    //fp add_star_arg
-    pub fn add_star_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("star")
-                .long("star")
-                .short('s')
-                .help("Star to use instead of right ascension and declination")
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn star<'a>(matches: &'a ArgMatches) -> Option<&'a String> {
-        matches.get_one::<String>("star")
-    }
-
-    //fp add_up_arg
-    pub fn add_up_arg(cmd: Command) -> Command {
-        cmd.arg(
-            Arg::new("up")
-                .long("up")
-                .short('u')
-                .help("Up to use for an image")
-                .action(ArgAction::Set),
-        )
-    }
-    pub fn up<'a>(matches: &'a ArgMatches) -> Option<&'a String> {
-        matches.get_one::<String>("up")
-    }
-}
+#[cfg(feature = "image")]
+use geo_nd::Quaternion;
+#[cfg(feature = "image")]
+use star_catalog::{Quat, Vec3};
 
 fn find_id_or_name(
     catalog: &Catalog,
@@ -263,6 +51,7 @@ fn main() -> Result<(), anyhow::Error> {
     let triangle_subcmd = cmdline::add_angles_arg(triangle_subcmd);
     let write_subcmd = Command::new("write").about("Write out the catalog");
     let write_subcmd = cmdline::add_output_arg(write_subcmd);
+
     let image_subcmd = Command::new("image").about("Generate an image");
     let image_subcmd = cmdline::add_output_arg(image_subcmd);
     let image_subcmd = cmdline::add_width_arg(image_subcmd);
@@ -289,6 +78,8 @@ fn main() -> Result<(), anyhow::Error> {
     let cmd = cmd.subcommand(write_subcmd);
     #[cfg(feature = "image")]
     let cmd = { cmd.subcommand(image_subcmd) };
+    #[cfg(not(feature = "image"))]
+    let _ = image_subcmd;
 
     let matches = cmd.get_matches();
 
@@ -313,7 +104,7 @@ fn main() -> Result<(), anyhow::Error> {
             #[cfg(feature = "csv")]
             Some("csv") => {
                 let mut catalog = Catalog::default();
-                catalog = catalog;
+                let _ = catalog;
                 {
                     let f = std::fs::File::open(catalog_filename)?;
                     star_catalog::hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
@@ -325,7 +116,7 @@ fn main() -> Result<(), anyhow::Error> {
                 let mut catalog = Catalog::default();
                 #[cfg(feature = "hipp_bright")]
                 if catalog_filename.as_os_str().as_encoded_bytes() == b"hipp_bright" {
-                    catalog = postcard::from_bytes(&star_catalog::hipparcos::HIPP_BRIGHT_PST)?;
+                    catalog = postcard::from_bytes(star_catalog::hipparcos::HIPP_BRIGHT_PST)?;
                     catalog.retain(|s| s.brighter_than(magnitude));
                 }
                 if catalog.is_empty() {
@@ -355,9 +146,9 @@ fn main() -> Result<(), anyhow::Error> {
             }
             None => {
                 if names_filename.as_os_str().as_encoded_bytes() == b"hipp" {
-                    catalog.add_names(&&star_catalog::hipparcos::HIP_ALIASES, true)?;
+                    catalog.add_names(star_catalog::hipparcos::HIP_ALIASES, true)?;
                 } else if names_filename.as_os_str().as_encoded_bytes() == b"collated" {
-                    catalog.add_names(&&star_catalog::hipparcos::HIP_COLLATED_ALIASES, true)?;
+                    catalog.add_names(star_catalog::hipparcos::HIP_COLLATED_ALIASES, true)?;
                 } else {
                     Err(anyhow!("Unknown builtin file {}", names_filename.display()))?
                 }
@@ -504,7 +295,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
     }
 
     // let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;
-    let max_angle_delta = cmdline::angle(&matches);
+    let max_angle_delta = cmdline::angle(matches);
 
     let subcube_iter = Subcube::iter_all();
     let r = catalog.find_star_triangles(subcube_iter, &angles_to_find, max_angle_delta);
@@ -529,7 +320,7 @@ fn list(catalog: Catalog, _matches: &ArgMatches) -> Result<(), anyhow::Error> {
 
 fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     use std::io::Write;
-    let output_filename: PathBuf = cmdline::output(&matches).into();
+    let output_filename: PathBuf = cmdline::output(matches).into();
     match output_filename.extension().and_then(|x| x.to_str()) {
         Some("json") => {
             let mut f = std::fs::File::create(output_filename)?;
@@ -540,7 +331,7 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         Some("pst") => {
             let mut f = std::fs::File::create(output_filename)?;
             let s = postcard::to_allocvec(&catalog)?;
-            f.write(&s)?;
+            f.write_all(&s)?;
         }
         _ => Err(anyhow!(
             "Unknown extension on catalog {} (note that CSV, postcard etc support must be compiled in with appropriate features)",
@@ -552,29 +343,30 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
 
 fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     let _ = &catalog;
+    let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov = (cmdline::fov(&matches) / 2.0).tan();
+        let tan_fov = (cmdline::fov(matches) / 2.0).tan();
         let mut v = Star::vec_of_ra_de(
-            cmdline::right_ascension(&matches),
-            cmdline::declination(&matches),
+            cmdline::right_ascension(matches),
+            cmdline::declination(matches),
         );
-        if let Some(index) = find_id_or_name(&catalog, cmdline::star(&matches).map(|a| a.as_str()))?
+        if let Some(index) = find_id_or_name(&catalog, cmdline::star(matches).map(|a| a.as_str()))?
         {
             v = catalog[index].vector;
         }
 
         let mut up = [0., 0., 1.].into();
-        let angle = cmdline::angle(&matches);
-        if let Some(index) = find_id_or_name(&catalog, cmdline::up(&matches).map(|a| a.as_str()))? {
+        let angle = cmdline::angle(matches);
+        if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
             up = catalog[index].vector - v;
         }
         let avg = Quat::look_at(&v, &up);
         let avg = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * avg;
 
-        let width = cmdline::width(&matches) as u32;
-        let height = cmdline::height(&matches) as u32;
-        let output_filename: PathBuf = cmdline::output(&matches).into();
+        let width = cmdline::width(matches) as u32;
+        let height = cmdline::height(matches) as u32;
+        let output_filename: PathBuf = cmdline::output(matches).into();
 
         // tan_fov is frame mm width / focal length in mm
         fn pxy_of_vec(width: u32, height: u32, tan_fov: f64, v: &Vec3) -> Option<(u32, u32)> {
@@ -654,15 +446,7 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
                     0,
                 ]
                 .into();
-                draw_star(
-                    &mut image,
-                    width,
-                    height,
-                    xy.0 as u32,
-                    xy.1 as u32,
-                    color,
-                    s.mag,
-                );
+                draw_star(&mut image, width, height, xy.0, xy.1, color, s.mag);
             }
         }
         image.save(output_filename)?;
@@ -685,13 +469,13 @@ fn draw_star(
     if false {
         // draw a cross
         for dx in 0..(2 * size + 1) {
-            if x as u32 + dx >= size && x as u32 + dx - size < width {
-                image.put_pixel(x as u32 + dx - size, y as u32, color);
+            if x + dx >= size && x + dx - size < width {
+                image.put_pixel(x + dx - size, y, color);
             }
         }
         for dy in 0..(2 * size + 1) {
-            if y as u32 + dy >= size && y as u32 + dy - size < height {
-                image.put_pixel(x as u32, y as u32 + dy - size, color);
+            if y + dy >= size && y + dy - size < height {
+                image.put_pixel(x, y + dy - size, color);
             }
         }
     } else {

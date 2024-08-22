@@ -187,3 +187,5 @@ pub mod constellations;
 pub mod hipparcos;
 pub mod iau;
 pub use catalog::{Catalog, CatalogIndex};
+
+pub mod cmdline;

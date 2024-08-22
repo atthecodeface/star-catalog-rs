@@ -169,15 +169,8 @@ impl Subcube {
     /// This returns false if the centre is too far from the unit
     /// sphere for any part of the subcube to overlap the unit sphere
     pub fn may_be_on_sphere(&self) -> bool {
-        let c = self.center();
-        let r = c.length();
-        if r < 1.0 - Self::SUBCUBE_RADIUS {
-            false
-        } else if r > 1.0 + Self::SUBCUBE_RADIUS {
-            false
-        } else {
-            true
-        }
+        let r = self.center().length();
+        (1.0 - Self::SUBCUBE_RADIUS..=1.0 + Self::SUBCUBE_RADIUS).contains(&r)
     }
 
     //mp cos_angle_on_sphere
@@ -195,12 +188,10 @@ impl Subcube {
     pub fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f64> {
         let c = self.center();
         let r = c.length();
-        if r < 1.0 - Self::SUBCUBE_RADIUS {
-            None
-        } else if r > 1.0 + Self::SUBCUBE_RADIUS {
-            None
-        } else {
+        if (1.0 - Self::SUBCUBE_RADIUS..=1.0 + Self::SUBCUBE_RADIUS).contains(&r) {
             Some(v.dot(&c) / r)
+        } else {
+            None
         }
     }
 

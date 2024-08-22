@@ -463,9 +463,7 @@ where
             if self.subcube.is_none() {
                 self.subcube = self.subcube_iter.next();
             }
-            let Some(subcube) = self.subcube else {
-                return None;
-            };
+            let subcube = self.subcube?;
             if self.i < self.catalog[subcube].len() {
                 let i = self.i;
                 self.i += 1;
