@@ -644,7 +644,6 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
 
 // tan_fov is frame mm width / focal length in mm
 #[cfg(feature = "image")]
-
 struct ImageView {
     width: u32,
     height: u32,
@@ -654,6 +653,7 @@ struct ImageView {
     orient: Quat,
     image: image::DynamicImage,
 }
+#[cfg(feature = "image")]
 impl ImageView {
     fn pxy_of_vec(&self, v: &Vec3, px: f64) -> Option<(f64, f64)> {
         if v[2] > 0. {
