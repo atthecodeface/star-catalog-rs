@@ -8,7 +8,7 @@ use star_catalog::{cmdline, Catalog, CatalogIndex, Star, Subcube};
 #[cfg(feature = "image")]
 use geo_nd::Quaternion;
 #[cfg(feature = "image")]
-use star_catalog::{Quat, Vec3};
+use star_catalog::{ImageView, Quat};
 
 fn find_id_or_name(
     catalog: &Catalog,
@@ -17,22 +17,7 @@ fn find_id_or_name(
     let Some(s) = s else {
         return Ok(None);
     };
-    match s.parse::<usize>() {
-        Err(_) => {
-            if let Some(s) = catalog.find_name(s) {
-                Ok(Some(s))
-            } else {
-                Err(anyhow!("Could not find star with name {s}"))
-            }
-        }
-        Ok(id) => {
-            if let Some(s) = catalog.find_sorted(id) {
-                Ok(Some(s))
-            } else {
-                Err(anyhow!("Could not find star with id {id}"))
-            }
-        }
-    }
+    Ok(Some(catalog.find_id_or_name(s)?))
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -642,148 +627,12 @@ fn write(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// tan_fov is frame mm width / focal length in mm
-#[cfg(feature = "image")]
-struct ImageView {
-    width: u32,
-    height: u32,
-    x_ofs: u32,
-    y_ofs: u32,
-    tan_fov_x2: f64,
-    orient: Quat,
-    image: image::DynamicImage,
-}
-#[cfg(feature = "image")]
-impl ImageView {
-    fn pxy_of_vec(&self, v: &Vec3, px: f64) -> Option<(f64, f64)> {
-        if v[2] > 0. {
-            return None;
-        }
-        let tx = -v[0] / v[2];
-        let ty = -v[1] / v[2];
-        let x = (self.width as f64) * (0.5 + tx / self.tan_fov_x2);
-        let y = (self.height as f64) * (0.5 - ty / self.tan_fov_x2);
-        if x < -px || x >= self.width as f64 + px {
-            return None;
-        }
-        if y < -px || y >= self.height as f64 + px {
-            return None;
-        }
-        Some((x, y))
-    }
-    fn put(&mut self, x: u32, y: u32, color: image::Rgba<u8>) {
-        use image::GenericImage;
-        self.image.put_pixel(x + self.x_ofs, y + self.y_ofs, color);
-    }
-    fn draw_star(&mut self, s: &Star) {
-        let v = self.orient.apply3(&s.vector);
-        if let Some(xy) = self.pxy_of_vec(&v, 100.) {
-            let (r, g, b) = Star::temp_to_rgb(s.temp());
-            let color = [
-                (r.clamp(0., 1.) * 255.9).floor() as u8,
-                (g.clamp(0., 1.) * 255.9).floor() as u8,
-                (b.clamp(0., 1.) * 255.9).floor() as u8,
-                0,
-            ]
-            .into();
-            self.draw_round_star(xy.0, xy.1, color, s.mag);
-        }
-    }
-    fn draw_grid(&mut self) {
-        let color_0 = [100, 10, 10, 0].into();
-        let color_1 = [10, 100, 10, 0].into();
-        for de_i in 0..180 {
-            let de = ((de_i as f64) / 90.0 - 1.0) * std::f64::consts::PI / 2.0;
-            let color = {
-                if de_i % 10 == 0 {
-                    color_1
-                } else {
-                    color_0
-                }
-            };
-            for ra_i in 0..3600 {
-                let ra = (ra_i as f64) / 1800.0 * std::f64::consts::PI;
-                let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v), 0.) {
-                    self.put(x as u32, y as u32, color);
-                }
-            }
-        }
-        for ra_i in 0..360 {
-            let ra = (ra_i as f64) / 180.0 * std::f64::consts::PI;
-            let color = {
-                if ra_i % 10 == 0 {
-                    color_1
-                } else {
-                    color_0
-                }
-            };
-            for de_i in 0..1800 {
-                let de = ((de_i as f64) / 900.0 - 1.0) * std::f64::consts::PI;
-                let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&self.orient.apply3(&v), 0.) {
-                    self.put(x as u32, y as u32, color);
-                }
-            }
-        }
-    }
-    fn draw_cross(&mut self, x: u32, y: u32, color: image::Rgba<u8>, mag: f32) {
-        let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
-        // draw a cross
-        for dx in 0..(2 * size + 1) {
-            if x + dx >= size && x + dx - size < self.width {
-                self.put(x + dx - size, y, color);
-            }
-        }
-        for dy in 0..(2 * size + 1) {
-            if y + dy >= size && y + dy - size < self.height {
-                self.put(x, y + dy - size, color);
-            }
-        }
-    }
-    fn draw_round_star(&mut self, x: f64, y: f64, color: image::Rgba<u8>, mag: f32) {
-        let size = ((7.0 - mag).powi(2) / 8.0).max(0.) as u32;
-        for dx in 0..size + 1 {
-            let f_dx = dx as f64;
-            let x_p_ib = x + f_dx >= 0. && x + f_dx < self.width as f64;
-            let x_m_ib = x - f_dx >= 0. && x - f_dx < self.width as f64;
-            if !x_m_ib && !x_p_ib {
-                continue;
-            }
-            for dy in 0..size + 1 {
-                if dx * dx + dy * dy > size * size {
-                    continue;
-                }
-                let f_dy = dy as f64;
-                let y_p_ib = y + f_dy >= 0. && y + f_dy < self.height as f64;
-                let y_m_ib = y - f_dy >= 0. && y - f_dy < self.height as f64;
-
-                if x_p_ib && y_p_ib {
-                    self.put((x + f_dx) as u32, (y + f_dy) as u32, color);
-                }
-                if x_p_ib && y_m_ib {
-                    self.put((x + f_dx) as u32, (y - f_dy) as u32, color);
-                }
-                if x_m_ib && y_p_ib {
-                    self.put((x - f_dx) as u32, (y + f_dy) as u32, color);
-                }
-                if x_m_ib && y_m_ib {
-                    self.put((x - f_dx) as u32, (y - f_dy) as u32, color);
-                }
-            }
-        }
-    }
-    fn take(self) -> image::DynamicImage {
-        self.image
-    }
-}
-
 fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     let _ = &catalog;
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov_x2 = (cmdline::fov(matches, 60.0) / 2.0).tan() * 2.0;
+        let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan();
         let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
@@ -804,15 +653,11 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         let width = cmdline::width(matches, 512) as u32;
         let height = cmdline::height(matches, 512) as u32;
         let image = image::DynamicImage::new_rgb8(width, height);
-        let mut image_view = ImageView {
-            width,
-            height,
-            tan_fov_x2,
-            orient,
-            image,
-            x_ofs: 0,
-            y_ofs: 0,
-        };
+        let mut image_view = ImageView::new(image);
+        image_view
+            .set_tan_hfov(tan_fov)
+            .set_orient(orient)
+            .set_star_size(width / 200);
         let output_filename: PathBuf = cmdline::output(matches).into();
 
         if true {
@@ -820,16 +665,12 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
         }
 
         let subcubes = Subcube::iter_all();
-        let subcubes = subcubes.filter(|s| s.may_be_on_sphere());
         let star_iter = catalog.iter_within_subcubes(subcubes);
 
         for s in star_iter {
-            if !s.brighter_than(7.0) {
-                continue;
-            }
             image_view.draw_star(s);
         }
-        let image = image_view.take();
+        let image = image_view.take_image();
         image.save(output_filename)?;
     }
     Ok(())
@@ -840,7 +681,6 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let tan_fov_x2 = 2.;
         let mut v = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
@@ -859,16 +699,10 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
 
         let width = cmdline::width(matches, 512) as u32;
         let height = cmdline::height(matches, 512) as u32;
+
         let image = image::DynamicImage::new_rgb8(width * 4, height * 3);
-        let mut image_view = ImageView {
-            width,
-            height,
-            tan_fov_x2,
-            orient,
-            image,
-            x_ofs: 0,
-            y_ofs: 0,
-        };
+        let mut image_view = ImageView::new(image);
+        image_view.set_tan_hfov(1.0).set_star_size(width / 200);
         let output_filename: PathBuf = cmdline::output(matches).into();
 
         for quadrant in 0..6 {
@@ -876,37 +710,36 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
                 0 => (
                     0,
                     1,
-                    Quat::look_at(&[-1., 0., 0.].into(), &[0., 0., 1.].into()),
+                    Quat::look_at(&[-1., 0., 0.].into(), &[0., 1., 0.].into()),
                 ),
                 1 => (
                     1,
                     1,
-                    Quat::look_at(&[0., 1., 0.].into(), &[0., 0., 1.].into()),
+                    Quat::look_at(&[0., 0., -1.].into(), &[0., 1., 0.].into()),
                 ),
                 2 => (
                     2,
                     1,
-                    Quat::look_at(&[1., 0., 0.].into(), &[0., 0., 1.].into()),
+                    Quat::look_at(&[1., 0., 0.].into(), &[0., 1., 0.].into()),
                 ),
                 3 => (
                     3,
                     1,
-                    Quat::look_at(&[0., -1., 0.].into(), &[0., 0., 1.].into()),
+                    Quat::look_at(&[0., 0., 1.].into(), &[0., 1., 0.].into()),
                 ),
                 4 => (
                     1,
                     0,
-                    Quat::look_at(&[0., 0., 1.].into(), &[0., -1., 0.].into()),
+                    Quat::look_at(&[0., 1., 0.].into(), &[0., 0., 1.].into()),
                 ),
                 _ => (
                     1,
                     2,
-                    Quat::look_at(&[0., 0., -1.].into(), &[0., 1., 0.].into()),
+                    Quat::look_at(&[0., -1., 0.].into(), &[0., 0., -1.].into()),
                 ),
             };
-            image_view.x_ofs = x_ofs * width;
-            image_view.y_ofs = y_ofs * height;
-            image_view.orient = face_orient * orient;
+            image_view.set_window((x_ofs * width, y_ofs * height), width, height);
+            image_view.set_orient(face_orient * orient);
             if true {
                 image_view.draw_grid();
             }
@@ -915,13 +748,10 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
             let star_iter = catalog.iter_within_subcubes(subcubes);
 
             for s in star_iter {
-                if !s.brighter_than(7.0) {
-                    continue;
-                }
                 image_view.draw_star(s);
             }
         }
-        let image = image_view.take();
+        let image = image_view.take_image();
         image.save(output_filename)?;
     }
     Ok(())

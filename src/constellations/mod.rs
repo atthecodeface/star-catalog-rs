@@ -1,3 +1,5 @@
+//! Constants that represent some common constellations, using Hipparcos numbers for the stars
+
 /// Constellations in the norhern hemisphere (Hipparcos numbers)
 ///
 /// 0 implies a break in a drawing; the first loop is the most important

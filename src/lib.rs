@@ -20,9 +20,15 @@
 //! standard names, and the [iau] module includes the naming from
 //! <https://www.iau.org/public/themes/naming_stars> - for those
 //! approved up to Jan 2021. This database includes the IAU right
-//! ascension and declination, which is used tto find the closest star
-//! in the Hipparcos database. Note thtata some IAU named stars are
+//! ascension and declination, which is used to find the closest star
+//! in the Hipparcos database. Note that some IAU named stars are
 //! *not* in the Hipparcos database.
+//!
+//! If the `hipp_bright` feature is used then the Hipparcos catalog
+//! stars of magnitude 8.0 or brighter are included (41,013 stars) as
+//! a postcard string, as [hipparcos::HIPP_BRIGHT_PST]; also 430 'common'
+//! names of these stars are included as
+//! [hipparcos::HIP_COLLATED_ALIASES].
 //!
 //! # [Catalog], [Star], cube and [Subcube]
 //!
@@ -131,11 +137,17 @@
 //! ```
 //!
 //! Find a star closest to a right-ascension and declination (and
-//! return the cosine of the angle offset)§
+//! return the cosine of the angle offset):
 //!
 //! ```rust,ignore
 //!   let (_,polaris_by_ra_de) = catalog.closest_to(0.66, 1.555).expect("Should have found Polaris");
 //!   assert_eq!(catalog[polaris_by_ra_de].id(), 111767);
+//! ```
+//!
+//! Find possible sets of three stars (A, B C) where the three angles between A and B, A and C, and B and C are given - to within an angular tolerance of delta:
+//!
+//! ```rust,ignore
+//!   let candidate_tris = catalog.find_star_triangles(catalog.iter_all(), &[0.1, 0.15, 0.05], 0.003);
 //! ```
 //!
 //! # A full-blown example
@@ -159,33 +171,62 @@
 //! ```
 //! # Crate Feature Flags
 //!
-//!! The following crate feature flags are available. They are configured in your Cargo.toml.
+//! The following crate feature flags are available. They are configured in your Cargo.toml.
 //!
 //! * csv
 //!
 //!    * Optional, compatible with Rust stable
+//!
 //!    * Allows reading of CSV catalog files (such as hipparcos::read_to_catalog)
 //!
 //! * image
 //!
 //!    * Optional, compatible with Rust stable
-//!    * Will be used for creating skymap images
+//!
+//!    * Module to provide means to create images, and to add skymap
+//!      images and cubemap to star_catalog binary
+//!
+//! * postcard
+//!
+//!    * Optional, compatible with Rust stable
+//!    * Allows reading and writing catalog files in Postcard format
+//!
+//! * hipp_bright
+//!
+//!    * Optional, compatible with Rust stable
+//!    * Includes constants for the Hipparcos catalog
 //!
 
+/// An XY vector used for star positions within an image
+pub type Vec2 = geo_nd::FArray<f64, 2>;
+
+/// An XYZ vector used for star directions
 pub type Vec3 = geo_nd::FArray<f64, 3>;
+
+/// A vector required by the Quat type - otherwise unused in the star catalog
 pub type Vec4 = geo_nd::FArray<f64, 4>;
+
+/// A quaternion that represents orientations of views of a sky map;
+/// this includes the direction and 'up' for a camera, for example
 pub type Quat = geo_nd::QArray<f64, Vec3, Vec4>;
 
-mod subcube;
-pub use subcube::Subcube;
-
-mod star;
-pub use star::Star;
-
 mod catalog;
+mod error;
+mod star;
+mod subcube;
+
+pub mod cmdline;
 pub mod constellations;
 pub mod hipparcos;
 pub mod iau;
-pub use catalog::{Catalog, CatalogIndex};
 
-pub mod cmdline;
+#[cfg(feature = "image")]
+mod image;
+
+pub use catalog::{Catalog, CatalogIndex};
+pub use error::Error;
+pub use star::Star;
+pub use subcube::Subcube;
+
+#[cfg(feature = "image")]
+pub use image::{ImageView, StarDrawStyle};

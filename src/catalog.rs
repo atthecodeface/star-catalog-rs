@@ -3,17 +3,7 @@ use std::collections::HashMap;
 use geo_nd::Vector;
 use serde::{Deserialize, Serialize};
 
-use crate::{Star, Subcube};
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Failed to find Id {0} in the catalog")]
-    FailedToFindId(usize),
-    #[error("Failed to read CSV file")]
-    #[from(csv::Error)]
-    CsvError,
-}
+use crate::{Error, Star, Subcube};
 
 //tp CatalogIndex
 /// An index into the Catalog to identify a particular star
@@ -201,6 +191,27 @@ impl Catalog {
     /// Find a star from its name
     pub fn find_name(&self, name: &str) -> Option<CatalogIndex> {
         self.named_stars.get(name).copied()
+    }
+
+    //mp find_id_or_name
+    /// Find a star from a string, which might be an id or a name
+    pub fn find_id_or_name(&self, s: &str) -> Result<CatalogIndex, Error> {
+        match s.parse::<usize>() {
+            Err(_) => {
+                if let Some(s) = self.find_name(s) {
+                    Ok(s)
+                } else {
+                    Err(Error::FailedToFindName)
+                }
+            }
+            Ok(id) => {
+                if let Some(s) = self.find_sorted(id) {
+                    Ok(s)
+                } else {
+                    Err(Error::FailedToFindId(id))
+                }
+            }
+        }
     }
 
     //mp closest_to

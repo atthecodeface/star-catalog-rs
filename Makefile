@@ -21,6 +21,19 @@ test_all:
 release:
 	cargo build --release --features image,postcard,csv,hipp_bright
 
+.PHONY: clippy
+clippy:
+	cargo clippy --features image,postcard,csv,hipp_bright
+
+.PHONY: docs
+docs:
+	cargo doc --all-features
+
+PHONY: cubemap
+cubemap: release
+	${BINARY} hipp_bright -m 5. --names collated cubemap -W 1024 -H 1024 --output ~/test.png
+	${BINARY} hipp_bright -m 5. --names collated cubemap --star Dubhe --up Polaris -W 1024 -H 1024 --output ~/test.png
+
 all: release
 	${BINARY} ${STARS} image -r 0 $(VIEW) -o winter_hexagon_0.png
 	${BINARY} ${STARS} image -r 30 $(VIEW) -o winter_hexagon_30.png

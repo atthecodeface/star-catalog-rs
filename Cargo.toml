@@ -12,9 +12,9 @@ categories = ["science"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/star-catalog-rs"
 
-
 [features]
-default = []
+default = ["postcard"]
+# default = ["postcard", "image", "hipp_bright"]
 image = ["dep:image"]
 csv = ["dep:csv"]
 postcard = ["dep:postcard"]

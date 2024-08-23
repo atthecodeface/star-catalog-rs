@@ -1,3 +1,7 @@
+//! Common functions for clap command line arguments and value extraction
+//!
+//! This provides for a consistent set of arguments within binaries (particularly star-catalog).
+
 //a Imports
 use clap::{
     builder::IntoResettable, builder::StyledStr, parser::ValuesRef, value_parser, Arg, ArgAction,
@@ -7,7 +11,7 @@ use clap::{
 //a Catalog
 //fp add_catalog_arg
 /// Add an argument to a clap [Command] to specify a catalog to load;
-/// this is a *rerquired* *positional* argument
+/// this is a *required* *positional* argument
 pub fn add_catalog_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -> Command {
     cmd.arg(
         Arg::new("catalog")
@@ -18,7 +22,7 @@ pub fn add_catalog_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) 
 }
 
 //fp catalog
-/// Retrieve the value of the catalog to load from the clap [Matches]
+/// Retrieve the value of the catalog to load from the clap [ArgMatches]
 ///
 /// Panics if the command argument was not required and was not given
 pub fn catalog(matches: &ArgMatches) -> String {
@@ -26,6 +30,7 @@ pub fn catalog(matches: &ArgMatches) -> String {
 }
 
 //fp add_names_arg
+/// Add an optional argument to a clap [Command] to specify a names file to load
 pub fn add_names_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -> Command {
     cmd.arg(
         Arg::new("names")
@@ -37,6 +42,8 @@ pub fn add_names_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) ->
 }
 
 //fp names
+/// Retrieve the value of the names file to load, if specified, from the clap [ArgMatches]
+///
 pub fn names(matches: &ArgMatches) -> Option<String> {
     matches.get_one::<String>("names").map(|s| s.to_string())
 }

@@ -8,7 +8,7 @@ use crate::Vec3;
 ///
 /// In a catalog stars can be marked as being on a part of the unit
 /// sphere. A subcube is created by dividing the cube from (-1, 1) in
-/// each dimension into ELE_PER_SIDE subcubes in each diimension;
+/// each dimension into ELE_PER_SIDE^3 subcubes;
 /// subcubes are easy to manipulate, and can be related to the portion
 /// of the unit sphere they encompass.
 ///
