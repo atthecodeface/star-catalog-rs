@@ -31,8 +31,8 @@ docs:
 
 PHONY: cubemap
 cubemap: release
-	${BINARY} hipp_bright -m 5. --names collated cubemap -W 1024 -H 1024 --output ~/test.png
-	${BINARY} hipp_bright -m 5. --names collated cubemap --star Dubhe --up Polaris -W 1024 -H 1024 --output ~/test.png
+	# ${BINARY} hipp_bright -m 7. --names collated cubemap -W 1024 -H 1024 --output ~/test.png
+	${BINARY} hipp_bright -m 6. --names collated cubemap --star Polaris --up Dubhe --angle 90 -W 1024 -H 1024 --output ~/test.png
 
 all: release
 	${BINARY} ${STARS} image -r 0 $(VIEW) -o winter_hexagon_0.png

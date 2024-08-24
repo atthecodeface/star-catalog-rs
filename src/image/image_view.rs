@@ -1,9 +1,9 @@
 //a Imports
-use geo_nd::Quaternion;
+use geo_nd::{Quaternion, Vector, Vector3};
 use image::{DynamicImage, GenericImage, Rgba};
 
 use crate::Star;
-use crate::{Quat, Vec3};
+use crate::{Quat, Vec2, Vec3};
 
 //a ImageView
 //tp StarDrawStyle
@@ -121,7 +121,7 @@ impl ImageView {
     //mi pxy_of_vec
     /// Return a pixel XY of a Vec3 using the current transformation; return None if the pixel would be more than px pixels outside the image window bounds
     ///
-    fn pxy_of_vec(&self, v: &Vec3, px: f64) -> Option<(f64, f64)> {
+    fn pxy_of_vec(&self, v: &Vec3, px: f64) -> Option<Vec2> {
         let v = self.orient.apply3(v);
         if v[2] > 0. {
             return None;
@@ -136,7 +136,7 @@ impl ImageView {
         if y < -px || y >= self.height as f64 + px {
             return None;
         }
-        Some((x, y))
+        Some([x, y].into())
     }
 
     //mi put
@@ -163,7 +163,7 @@ impl ImageView {
             ]
             .into();
             let size = ((7.0 - s.mag).clamp(1.0, 6.).powi(2) / 36.0) * self.star_size as f32;
-            (self.draw)(self, xy.0, xy.1, color, size as u32);
+            (self.draw)(self, xy[0], xy[1], color, size as u32);
         }
     }
 
@@ -193,8 +193,8 @@ impl ImageView {
                 let de = ((de_i as f64) / (de_steps_for_180_degrees as f64) * 2.0 - 1.0)
                     * std::f64::consts::PI;
                 let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&v, 0.) {
-                    self.put(x as u32, y as u32, color);
+                if let Some(xy) = self.pxy_of_vec(&v, 0.) {
+                    self.put(xy[0] as u32, xy[1] as u32, color);
                 }
             }
         }
@@ -224,8 +224,8 @@ impl ImageView {
             for ra_i in 0..2 * ra_steps_for_180_degrees {
                 let ra = (ra_i as f64) / (ra_steps_for_180_degrees as f64) * std::f64::consts::PI;
                 let v = Star::vec_of_ra_de(ra, de);
-                if let Some((x, y)) = self.pxy_of_vec(&v, 0.) {
-                    self.put(x as u32, y as u32, color);
+                if let Some(xy) = self.pxy_of_vec(&v, 0.) {
+                    self.put(xy[0] as u32, xy[1] as u32, color);
                 }
             }
         }
@@ -286,6 +286,79 @@ impl ImageView {
                     self.put((x - f_dx) as u32, (y - f_dy) as u32, color);
                 }
             }
+        }
+    }
+
+    //mp draw_line_between_stars
+    /// Draw a line between two stars
+    ///
+    ///
+    pub fn draw_line_between_stars(&mut self, c: Rgba<u8>, s0: &Star, s1: &Star) {
+        // Get q = quaternion that maps s0 to [1,0,0], and s1 to [c,s,0]
+        let up = s0.vector.cross_product(&s1.vector).normalize();
+        let q = Quat::of_axis_angle(&[1., 0., 0.].into(), std::f64::consts::PI / 2.0)
+            * Quat::of_axis_angle(&[0., -1., 0.].into(), std::f64::consts::PI / 2.0)
+            * Quat::look_at(&s0.vector, &up);
+        let angle = s0.cos_angle_between(s1).acos();
+        // draw circle needs quat to map [1,0,0] to s0, and [c,s,0] to map to
+        self.draw_circle(c, q.conjugate(), angle);
+    }
+
+    //mp draw_circle
+    /// Draw part of a great circle that is defined applying `quat` to
+    /// `[1.,0.,0.]` `[cos(angle), sin(angle), 0.]`.
+    pub fn draw_circle(&mut self, c: Rgba<u8>, mut quat: Quat, mut angle: f64) {
+        if angle < 1.0E-6 {
+            return;
+        }
+        const MAX_ANGLE_TO_DRAW: f64 = 0.5;
+        while angle > MAX_ANGLE_TO_DRAW {
+            self.draw_circle(c, quat, MAX_ANGLE_TO_DRAW);
+            quat = quat
+                * Quat::of_rijk(
+                    (MAX_ANGLE_TO_DRAW / 2.0).cos(),
+                    0.,
+                    0.,
+                    (-MAX_ANGLE_TO_DRAW / 2.0).sin(),
+                );
+            angle -= MAX_ANGLE_TO_DRAW;
+        }
+        let v0 = quat.apply3(&[1., 0., 0.].into());
+        let v1 = quat.apply3(&[angle.cos(), angle.sin(), 0.].into());
+        let Some(p0) = self.pxy_of_vec(&v0, self.width as f64) else {
+            let Some(p1) = self.pxy_of_vec(&v1, self.width as f64) else {
+                return;
+            };
+            angle = angle / 2.0;
+            quat = quat * Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
+            return self.draw_circle(c, quat, angle);
+        };
+        let Some(p1) = self.pxy_of_vec(&v1, self.width as f64) else {
+            angle = angle / 2.0;
+            return self.draw_circle(c, quat, angle);
+        };
+        let m = quat.apply3(&[(angle / 2.0).cos(), (angle / 2.0).sin(), 0.].into());
+        let Some(pm) = self.pxy_of_vec(&m, self.width as f64) else {
+            return;
+        };
+        if (p1 - pm).normalize().dot(&(pm - p0).normalize()) > 0.999 {
+            let dp = (p1 - p0) / 20.0;
+            for i in 0..20 {
+                let f = i as f64;
+                let p = p0 + dp * f;
+                if p[0] < 0.0 || p[0] >= self.width as f64 {
+                    continue;
+                }
+                if p[1] < 0.0 || p[1] >= self.height as f64 {
+                    continue;
+                }
+                self.put(p[0] as u32, p[1] as u32, c);
+            }
+        } else {
+            angle = angle / 2.0;
+            self.draw_circle(c, quat, angle);
+            quat = quat * Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
+            return self.draw_circle(c, quat, angle);
         }
     }
 
