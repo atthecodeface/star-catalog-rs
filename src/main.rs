@@ -766,8 +766,6 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
                             );
                         }
                         last = Some(index);
-                    } else {
-                        last = last;
                     }
                 }
             }

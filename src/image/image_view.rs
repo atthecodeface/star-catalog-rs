@@ -334,27 +334,26 @@ impl ImageView {
         const MAX_ANGLE_TO_DRAW: f64 = 0.5;
         while angle > MAX_ANGLE_TO_DRAW {
             self.draw_circle(c, quat, MAX_ANGLE_TO_DRAW);
-            quat = quat
-                * Quat::of_rijk(
-                    (MAX_ANGLE_TO_DRAW / 2.0).cos(),
-                    0.,
-                    0.,
-                    (-MAX_ANGLE_TO_DRAW / 2.0).sin(),
-                );
+            quat *= Quat::of_rijk(
+                (MAX_ANGLE_TO_DRAW / 2.0).cos(),
+                0.,
+                0.,
+                (-MAX_ANGLE_TO_DRAW / 2.0).sin(),
+            );
             angle -= MAX_ANGLE_TO_DRAW;
         }
         let v0 = quat.apply3(&[1., 0., 0.].into());
         let v1 = quat.apply3(&[angle.cos(), angle.sin(), 0.].into());
         let Some(p0) = self.pxy_of_vec(&v0, self.width as f64) else {
-            let Some(p1) = self.pxy_of_vec(&v1, self.width as f64) else {
+            if self.pxy_of_vec(&v1, self.width as f64).is_none() {
                 return;
             };
-            angle = angle / 2.0;
-            quat = quat * Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
+            angle /= 2.0;
+            quat *= Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
             return self.draw_circle(c, quat, angle);
         };
         let Some(p1) = self.pxy_of_vec(&v1, self.width as f64) else {
-            angle = angle / 2.0;
+            angle /= 2.0;
             return self.draw_circle(c, quat, angle);
         };
         let m = quat.apply3(&[(angle / 2.0).cos(), (angle / 2.0).sin(), 0.].into());
@@ -363,9 +362,9 @@ impl ImageView {
         };
         // If the middlle is out by more than 2.5 degrees then split in two
         if (p1 - pm).normalize().dot(&(pm - p0).normalize()) < 0.999 {
-            angle = angle / 2.0;
+            angle /= 2.0;
             self.draw_circle(c, quat, angle);
-            quat = quat * Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
+            quat *= Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
             return self.draw_circle(c, quat, angle);
         }
         self.draw_line(c, &p0, &p1);
