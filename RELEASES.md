@@ -1,3 +1,20 @@
+# Release 0.0.7 (2024-08-24)
+
+- Moved `find_id_or_name` to Catalog from the binary
+
+- Improve cubemap layout
+
+- Add constellation drawing to cubemap
+
+- Added in more northern hemisphere constellations
+
+- Moved image_view to be a module of the library accessible to all
+  rather than part of the binary
+
+- Add ability to select star draw style to ImageView
+
+- Added `draw_line`,`draw_circle`, and `draw_line_between_stars` to ImageView
+
 # Release 0.0.6 (2024-08-22)
 
 - Add 'collated' names as a built-in
