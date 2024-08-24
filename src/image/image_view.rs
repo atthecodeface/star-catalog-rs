@@ -307,6 +307,26 @@ impl ImageView {
     //mp draw_circle
     /// Draw part of a great circle that is defined applying `quat` to
     /// `[1.,0.,0.]` `[cos(angle), sin(angle), 0.]`.
+    ///
+    /// Draw in sections of at most 70 degrees or so (which means any
+    /// section to draw is a single continuous cuve on the image, or
+    /// not on the image)
+    ///
+    /// The rest is approximate (and designed for the cubemap at present)
+    ///
+    /// Map both ends of the segment to screen space - if both are way
+    /// off screen, draw nothing
+    ///
+    /// If only one is near-screen then bisect the line and try
+    /// drawing the half segment from/to that point
+    ///
+    /// If both are on-screen then determine if the segment is
+    /// straight (find out how off-line the midpoint of the segment
+    /// is).
+    ///
+    /// If the segment is not straight then bisect and draw both halves
+    ///
+    /// If the segment is straight then draw a straight line
     pub fn draw_circle(&mut self, c: Rgba<u8>, mut quat: Quat, mut angle: f64) {
         if angle < 1.0E-6 {
             return;
@@ -341,24 +361,110 @@ impl ImageView {
         let Some(pm) = self.pxy_of_vec(&m, self.width as f64) else {
             return;
         };
-        if (p1 - pm).normalize().dot(&(pm - p0).normalize()) > 0.999 {
-            let dp = (p1 - p0) / 20.0;
-            for i in 0..20 {
-                let f = i as f64;
-                let p = p0 + dp * f;
-                if p[0] < 0.0 || p[0] >= self.width as f64 {
-                    continue;
-                }
-                if p[1] < 0.0 || p[1] >= self.height as f64 {
-                    continue;
-                }
-                self.put(p[0] as u32, p[1] as u32, c);
-            }
-        } else {
+        // If the middlle is out by more than 2.5 degrees then split in two
+        if (p1 - pm).normalize().dot(&(pm - p0).normalize()) < 0.999 {
             angle = angle / 2.0;
             self.draw_circle(c, quat, angle);
             quat = quat * Quat::of_rijk((angle / 2.0).cos(), 0., 0., (-angle / 2.0).sin());
             return self.draw_circle(c, quat, angle);
+        }
+        self.draw_line(c, &p0, &p1);
+    }
+
+    //mp draw_line
+    /// Draw a straight line between two coordinates on the screen
+    ///
+    /// This uses Bressenham's algorithm
+    ///
+    /// For lines that are less than 45 degrees off horizontal:
+    ///
+    /// Starting from the left-most pixel, draw the pixel, and move right; add dy to the current error.
+    ///
+    /// If the error is positive then move up (or down), draw the
+    /// pixel, and subtract dx from the current error.
+    ///
+    /// Repeat the draw-and-move-right until dx loops have happened
+    ///
+    /// After reaching the right-most pixel the error will have had
+    /// dx*dy added to it (since dy is added once for each of dx
+    /// steps). Since the error is never more than dx (after a loop
+    /// step) then presumably dy*dx has been subtracted from it,
+    /// i.e. the move up (or down) has happened dy times.
+    ///
+    /// This version uses a dxye.0 for the every pixel step, and a
+    /// dxye.1 for the if step; it always starts from the left-most
+    /// pixel, but the per-step can be a delta Y step with the
+    /// optional movement being to the right - allowing lines of any
+    /// angle to be drawn
+    ///
+    /// The drawing steps are performed with isize values rather than
+    /// floats, but using a 16-bit fixed point value for the error to
+    /// provide more precision
+    pub fn draw_line(&mut self, c: Rgba<u8>, xy0: &Vec2, xy1: &Vec2) {
+        let (sxy, exy) = if xy0[0] < xy1[0] {
+            (xy0, xy1)
+        } else {
+            (xy1, xy0)
+        };
+
+        if exy[0] < 0. {
+            return;
+        }
+        if sxy[0] > self.width as f64 {
+            return;
+        }
+        if sxy[1] < 0. && exy[1] < 0. {
+            return;
+        }
+        if sxy[1] > self.height as f64 && exy[1] > self.height as f64 {
+            return;
+        }
+
+        let delta_xy = *exy - *sxy;
+        let delta_xy = (
+            (delta_xy[0] * 65536.0) as isize,
+            (delta_xy[1] * 65536.0) as isize,
+        );
+        let mut xy = (sxy[0].floor() as isize, sxy[1].floor() as isize);
+        // let e = ((sxy[1] - sxy[1].floor())*(delta_xy[0] as f64) - (sxy[0] - sxy[0].floor())*(delta_xy[1] as f64))as isize;
+        let mut e = 0;
+        let mut dx0 = 1;
+        let mut dy0 = 0;
+        let mut de0 = delta_xy.1.abs();
+        let mut dx1 = 0;
+        let mut dy1 = delta_xy.1.signum();
+        let mut de1 = delta_xy.0;
+
+        let mut n = delta_xy.0 >> 16;
+        if delta_xy.1.abs() > delta_xy.0 {
+            e = -e;
+            n = delta_xy.1.abs() >> 16;
+            (dx0, dx1) = (dx1, dx0);
+            (dy0, dy1) = (dy1, dy0);
+            (de0, de1) = (de1, de0);
+        }
+
+        for _ in 0..n + 1 {
+            if xy.0 >= self.width as isize {
+                return;
+            }
+            if xy.0 >= 0 && xy.1 >= 0 && xy.1 < self.height as isize {
+                self.put(xy.0 as u32, xy.1 as u32, c);
+            }
+            xy.0 += dx0;
+            xy.1 += dy0;
+            e -= de0;
+            if e < 0 {
+                if xy.0 >= self.width as isize {
+                    return;
+                }
+                if xy.0 >= 0 && xy.1 >= 0 && xy.1 < self.height as isize {
+                    self.put(xy.0 as u32, xy.1 as u32, c);
+                }
+                xy.0 += dx1;
+                xy.1 += dy1;
+                e += de1;
+            }
         }
     }
 
