@@ -2,7 +2,75 @@
 use geo_nd::Vector;
 use serde::{Deserialize, Serialize};
 
+use std::rc::Rc;
+
 use crate::{Subcube, Vec3};
+
+pub trait StarFilterFn: Fn(&Star, usize) -> bool + 'static {}
+
+impl<F> StarFilterFn for F where F: for<'a> Fn(&'a Star, usize) -> bool + 'static {}
+
+#[derive(Clone)]
+pub struct StarFilter(Rc<dyn StarFilterFn>);
+impl std::default::Default for StarFilter {
+    fn default() -> Self {
+        let f = Rc::new(|_s: &Star, _n: usize| true);
+        StarFilter(f)
+    }
+}
+
+impl<F: StarFilterFn + 'static> From<F> for StarFilter {
+    fn from(f: F) -> Self {
+        let f = Rc::new(f);
+        Self(f)
+    }
+}
+impl StarFilter {
+    pub fn call(&self, s: &Star, n: usize) -> bool {
+        self.0(s, n)
+    }
+    pub fn then(mut self, f: StarFilter) -> Self {
+        let f_first = self.0.clone();
+        // self.0 = Rc::new(move |s, n| f_first(s, n) && f.call(s, n));
+        self.0 = Rc::new(move |s, n| if f_first(s, n) { f.call(s, n) } else { false });
+        self
+    }
+    pub fn select(skip: usize, limit: usize) -> Self {
+        let select = StarFilterSelect::new(skip, limit);
+        Self(Rc::new(move |_s_, _n| select.filter()))
+    }
+    pub fn brighter_than(magnitude: f32) -> Self {
+        let f = Rc::new(move |s: &Star, _n: usize| s.mag < magnitude);
+        Self(f)
+    }
+    pub fn cos_to_gt(v: Vec3, cos: f64) -> Self {
+        let f = Rc::new(move |s: &Star, _n: usize| v.dot(&s.vector) > cos);
+        Self(f)
+    }
+}
+#[derive(Clone)]
+pub struct StarFilterSelect {
+    skip: std::cell::RefCell<usize>,
+    limit: std::cell::RefCell<usize>,
+}
+impl StarFilterSelect {
+    pub fn new(skip: usize, limit: usize) -> Self {
+        let skip = skip.into();
+        let limit = limit.into();
+        Self { skip, limit }
+    }
+    pub fn filter(&self) -> bool {
+        if *self.skip.borrow() > 0 {
+            *self.skip.borrow_mut() -= 1;
+            false
+        } else if *self.limit.borrow() > 0 {
+            *self.limit.borrow_mut() -= 1;
+            true
+        } else {
+            false
+        }
+    }
+}
 
 //a Star and StarSerialized
 //tp StarSerialized

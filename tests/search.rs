@@ -9,7 +9,7 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
     let magnitude = 5.0;
     let s = std::fs::read_to_string("hipparcos.json")?;
     let mut catalog: Catalog = serde_json::from_str(&s)?;
-    catalog.retain(|s| s.brighter_than(magnitude));
+    catalog.retain(move |s, _n| s.brighter_than(magnitude));
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
     catalog.add_names(hipparcos::HIP_ALIASES, true)?;

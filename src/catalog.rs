@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use geo_nd::Vector;
 use serde::{Deserialize, Serialize};
 
-use crate::{Error, Star, Subcube};
+use crate::{Error, Star, StarFilter, StarFilterFn, Subcube, Vec3};
 
 //tp CatalogIndex
 /// An index into the Catalog to identify a particular star
@@ -11,6 +11,16 @@ use crate::{Error, Star, Subcube};
 /// A [CatalogIndex] becomes invalid if the Catalog is sorted again
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
 pub struct CatalogIndex(usize);
+impl CatalogIndex {
+    pub fn as_usize(self) -> usize {
+        self.0
+    }
+}
+impl From<usize> for CatalogIndex {
+    fn from(index: usize) -> Self {
+        CatalogIndex(index)
+    }
+}
 
 /// A catalog of stars
 ///
@@ -36,6 +46,9 @@ pub struct Catalog {
     sorted: bool,
     /// Stars dictionary to map name to an index in stars
     named_stars: HashMap<String, CatalogIndex>,
+    /// Filter to apply to finding stars
+    #[serde(skip)]
+    filter: StarFilter,
     /// Star indices within each subcube
     #[serde(skip)]
     subcubes: Vec<Vec<CatalogIndex>>,
@@ -51,11 +64,37 @@ impl Catalog {
     /// allowed until a derive_data() call is invoked)
     pub fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&Star) -> bool,
+        F: StarFilterFn,
     {
         self.sorted = false;
         self.clear_derived_data();
-        self.stars.retain(f);
+        let mut i = 0;
+        self.stars.retain(move |s| {
+            i += 1;
+            f(s, i)
+        });
+    }
+
+    //mp clear_filter
+    pub fn clear_filter(&mut self) -> StarFilter {
+        std::mem::take(&mut self.filter)
+    }
+
+    //ap filter
+    pub fn filter(&self) -> &StarFilter {
+        &self.filter
+    }
+
+    //mp set_filter
+    pub fn set_filter(&mut self, f: StarFilter) {
+        self.filter = f;
+    }
+
+    //mp add_filter
+    pub fn add_filter(&mut self, f: StarFilter) -> StarFilter {
+        let f_orig = self.filter.clone();
+        self.filter = f_orig.clone().then(f);
+        f_orig
     }
 
     //mp len
@@ -265,6 +304,44 @@ impl Catalog {
         }
     }
 
+    //mp find_stars_around
+    /// Find stars within a certain angle around a vector
+    ///
+    /// Needs data to have been derived for the Catalog
+    pub fn find_stars_around(&self, vector: &Vec3, max_angle: f64) -> Vec<CatalogIndex> {
+        let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
+        let max_cos = max_angle.cos();
+        let max_subcube_cos = (max_angle + subcube_max_angle).cos();
+        let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
+
+        // Run through all the supplied subcubes
+        let mut result = vec![];
+        for sub in Subcube::of_vector(vector).iter_range(subcube_range) {
+            if self[sub].is_empty() {
+                continue;
+            }
+            let Some(c) = sub.cos_angle_on_sphere(vector) else {
+                continue;
+            };
+            if c < max_subcube_cos {
+                continue;
+            }
+
+            for index in self[sub].iter() {
+                let star = &self[*index];
+                let c = star.vector.dot(vector);
+                if c < max_cos {
+                    continue;
+                }
+                if !self.filter.call(star, result.len()) {
+                    continue;
+                }
+                result.push(*index);
+            }
+        }
+        result
+    }
+
     //mp find_star_triangles
     /// Find
     ///
@@ -407,6 +484,9 @@ impl Catalog {
                                 }
                                 let c_s12 = s1.cos_angle_between(s2);
                                 if c_s12 < cos_angle_ranges[2].0 || c_s12 > cos_angle_ranges[2].1 {
+                                    continue;
+                                }
+                                if !self.filter.call(s0, result.len()) {
                                     continue;
                                 }
                                 result.push((*i0, *i1, *i2));

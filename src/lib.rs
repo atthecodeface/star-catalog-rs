@@ -225,7 +225,7 @@ mod image;
 
 pub use catalog::{Catalog, CatalogIndex};
 pub use error::Error;
-pub use star::Star;
+pub use star::{Star, StarFilter, StarFilterFn};
 pub use subcube::Subcube;
 
 #[cfg(feature = "image")]

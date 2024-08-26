@@ -375,14 +375,14 @@ This is in degrees, and defaults to 0.
             Some("json") => {
                 let s = std::fs::read_to_string(catalog_filename)?;
                 let mut catalog: Catalog = serde_json::from_str(&s)?;
-                catalog.retain(|s| s.brighter_than(magnitude));
+                catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 catalog
             }
             #[cfg(feature = "postcard")]
             Some("pst") => {
                 let data = std::fs::read(catalog_filename)?;
                 let mut catalog: Catalog = postcard::from_bytes(&data)?;
-                catalog.retain(|s| s.brighter_than(magnitude));
+                catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 catalog
             }
             #[cfg(feature = "csv")]
@@ -401,7 +401,7 @@ This is in degrees, and defaults to 0.
                 #[cfg(feature = "hipp_bright")]
                 if catalog_filename.as_os_str().as_encoded_bytes() == b"hipp_bright" {
                     catalog = postcard::from_bytes(star_catalog::hipparcos::HIPP_BRIGHT_PST)?;
-                    catalog.retain(|s| s.brighter_than(magnitude));
+                    catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 }
                 if catalog.is_empty() {
                     Err(anyhow!(
@@ -463,7 +463,7 @@ This is in degrees, and defaults to 0.
                 ids.push(s.id);
             }
         }
-        catalog.retain(|s| ids.binary_search(&s.id).is_ok());
+        catalog.retain(move |s, _n| ids.binary_search(&s.id).is_ok());
         catalog.sort();
     }
 

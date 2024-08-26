@@ -1,3 +1,12 @@
+# Release 0.0.8 in progress (2024-08-26)
+
+- Added StarFilter, and StarFilterSelect, to provide simple filtering
+  of results (and to allow selection of a subset of results)
+
+- Added `find_stars_around` to Catalog
+
+- Added to and from usize methods for CatalogIndex
+
 # Release 0.0.7 (2024-08-24)
 
 - Moved `find_id_or_name` to Catalog from the binary
