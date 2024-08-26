@@ -213,6 +213,7 @@ pub type Quat = geo_nd::QArray<f64, Vec3, Vec4>;
 mod catalog;
 mod error;
 mod star;
+mod star_filter;
 mod subcube;
 
 pub mod cmdline;
@@ -225,7 +226,8 @@ mod image;
 
 pub use catalog::{Catalog, CatalogIndex};
 pub use error::Error;
-pub use star::{Star, StarFilter, StarFilterFn};
+pub use star::Star;
+pub use star_filter::{StarFilter, StarFilterFn};
 pub use subcube::Subcube;
 
 #[cfg(feature = "image")]
