@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Error, Star, StarFilter, StarFilterFn, Subcube, Vec3};
 
+// The sky above a location with latitude L and longitude M (east)
+//
+// It is right ascension X + M * 24/360 + days * 360/364.25
+//
+// days since 18th sept 2024 has X about 0
+
 //tp CatalogIndex
 /// An index into the Catalog to identify a particular star
 ///
