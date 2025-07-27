@@ -140,7 +140,8 @@
 //! return the cosine of the angle offset):
 //!
 //! ```rust,ignore
-//!   let (_,polaris_by_ra_de) = catalog.closest_to(0.66, 1.555).expect("Should have found Polaris");
+//!   let subcube_iter = Subcube::iter_all();
+//!   let (_,polaris_by_ra_de) = catalog.closest_to_ra_de(subcube_iter, 0.66, 1.555).expect("Should have found Polaris");
 //!   assert_eq!(catalog[polaris_by_ra_de].id(), 111767);
 //! ```
 //!
@@ -153,7 +154,7 @@
 //! # A full-blown example
 //!
 //! ```rust
-//!    use star_catalog::{hipparcos, Catalog, CatalogIndex};
+//!    use star_catalog::{hipparcos, Catalog, CatalogIndex, Subcube};
 //!
 //! # fn main() -> Result<(),Box<dyn std::error::Error>> {
 //!    let s = std::fs::read_to_string("hipparcos.json")?;
@@ -164,7 +165,8 @@
 //!    let polaris : CatalogIndex = catalog.find_sorted(11767).expect("Should have found Polaris");
 //!    let polaris_by_name = catalog.find_name("Polaris").expect("Should have found Polaris");
 //!    assert_eq!(catalog[polaris_by_name].id, 11767);
-//!    let (_,polaris_by_ra_de) = catalog.closest_to(0.66, 1.555).expect("Should have found Polaris");
+//!    let subcube_iter = Subcube::iter_all();
+//!    let (_,polaris_by_ra_de) = catalog.closest_to_ra_de(subcube_iter, 0.66, 1.555).expect("Should have found Polaris");
 //!    assert_eq!(catalog[polaris_by_ra_de].id, 11767);
 //! # Ok(())
 //! # }

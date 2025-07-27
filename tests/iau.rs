@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use star_catalog::{iau, Catalog};
+use star_catalog::{iau, Catalog, Subcube};
 
 #[test]
 fn test_iau() -> Result<(), Box<dyn Error>> {
@@ -12,7 +12,8 @@ fn test_iau() -> Result<(), Box<dyn Error>> {
     for (name, opt_id, ra, de) in iau::NAMES_AND_RA_DE.iter() {
         let ra = (*ra as f64) / 180.0 * std::f64::consts::PI;
         let de = (*de as f64) / 180.0 * std::f64::consts::PI;
-        let (c, star) = catalog.closest_to(ra, de).unwrap();
+        let subcube_iter = Subcube::iter_all();
+        let (c, star) = catalog.closest_to_ra_de(subcube_iter, ra, de).unwrap();
         let found_id = catalog[star].id;
         if let Some(iau_id) = *opt_id {
             assert!(

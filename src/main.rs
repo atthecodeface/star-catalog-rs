@@ -370,55 +370,7 @@ This is in degrees, and defaults to 0.
     let magnitude = cmdline::magnitude(&matches, 12.0);
     let catalog_filename: PathBuf = cmdline::catalog(&matches).into();
 
-    let mut catalog = {
-        match catalog_filename.extension().and_then(|x| x.to_str()) {
-            Some("json") => {
-                let s = std::fs::read_to_string(catalog_filename)?;
-                let mut catalog: Catalog = serde_json::from_str(&s)?;
-                catalog.retain(move |s, _n| s.brighter_than(magnitude));
-                catalog
-            }
-            #[cfg(feature = "postcard")]
-            Some("pst") => {
-                let data = std::fs::read(catalog_filename)?;
-                let mut catalog: Catalog = postcard::from_bytes(&data)?;
-                catalog.retain(move |s, _n| s.brighter_than(magnitude));
-                catalog
-            }
-            #[cfg(feature = "csv")]
-            Some("csv") => {
-                let mut catalog = Catalog::default();
-                let _ = catalog;
-                {
-                    let f = std::fs::File::open(catalog_filename)?;
-                    star_catalog::hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
-                }
-                catalog
-            }
-            None => {
-                #[allow(unused_mut)]
-                let mut catalog = Catalog::default();
-                #[cfg(feature = "hipp_bright")]
-                if catalog_filename.as_os_str().as_encoded_bytes() == b"hipp_bright" {
-                    catalog = postcard::from_bytes(star_catalog::hipparcos::HIPP_BRIGHT_PST)?;
-                    catalog.retain(move |s, _n| s.brighter_than(magnitude));
-                }
-                if catalog.is_empty() {
-                    Err(anyhow!(
-                        "Unknown builtin catalog {} (use feature hipp_bright)",
-                        catalog_filename.display()
-                    ))?
-                }
-                catalog
-            }
-            _ => Err(anyhow!(
-                "Unknown extension on catalog {} (note that CSV, postcard etc support must be compiled in with appropriate features)",
-                catalog_filename.display()
-            ))?,
-        }
-    };
-
-    catalog.sort();
+    let mut catalog = Catalog::load_catalog(&catalog_filename, magnitude)?;
 
     if let Some(names_filename) = cmdline::names(&matches) {
         let names_filename: PathBuf = names_filename.into();

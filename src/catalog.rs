@@ -1,10 +1,17 @@
+//a Imports
 use std::collections::HashMap;
+use std::path::Path;
 
 use geo_nd::Vector;
 use serde::{Deserialize, Serialize};
 
+// hipparcos is used only with some features
+#[allow(unused_imports)]
+use crate::hipparcos;
 use crate::{Error, Star, StarFilter, StarFilterFn, Subcube, Vec3};
 
+//a CatalogIndex
+//tp CatalogIndex
 // The sky above a location with latitude L and longitude M (east)
 //
 // It is right ascension X + M * 24/360 + days * 360/364.25
@@ -22,12 +29,16 @@ impl CatalogIndex {
         self.0
     }
 }
+
+//ip From<usize> for CatalogIndex
 impl From<usize> for CatalogIndex {
     fn from(index: usize) -> Self {
         CatalogIndex(index)
     }
 }
 
+//a Catalog
+//tp Catalog
 /// A catalog of stars
 ///
 /// The catalog contains an indexed (and possibly named) list of
@@ -60,94 +71,59 @@ pub struct Catalog {
     subcubes: Vec<Vec<CatalogIndex>>,
 }
 
+//ip Catalog - Constructors and builders (e.g. add stars, names)
 impl Catalog {
-    //mp retain
-    /// Retain stars that match a certain criterion; the rest are
-    /// dropped
-    ///
-    /// This should be invoked prior to any stars being named; it also
-    /// clears the derived data (e.g. geometric searching will not be
-    /// allowed until a derive_data() call is invoked)
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: StarFilterFn,
-    {
-        self.sorted = false;
-        self.clear_derived_data();
-        let mut i = 0;
-        self.stars.retain(move |s| {
-            i += 1;
-            f(s, i)
-        });
-    }
-
-    //mp clear_filter
-    pub fn clear_filter(&mut self) -> StarFilter {
-        std::mem::take(&mut self.filter)
-    }
-
-    //ap filter
-    pub fn filter(&self) -> &StarFilter {
-        &self.filter
-    }
-
-    //mp set_filter
-    pub fn set_filter(&mut self, f: StarFilter) {
-        self.filter = f;
-    }
-
-    //mp add_filter
-    pub fn add_filter(&mut self, f: StarFilter) -> StarFilter {
-        let f_orig = self.filter.clone();
-        self.filter = f_orig.clone().then(f);
-        f_orig
-    }
-
-    //mp len
-    /// Get the number of stars in the catalog
-    pub fn len(&self) -> usize {
-        self.stars.len()
-    }
-
-    //mp is_empty
-    /// Returns true if the catalog contains no stars
-    pub fn is_empty(&self) -> bool {
-        self.stars.is_empty()
-    }
-
-    //mp is_sorted
-    /// Returns true if the catalog has been sorted (and is thus ready
-    /// for names to be added)
-    pub fn is_sorted(&self) -> bool {
-        self.sorted
-    }
-
-    //mi has_derived_data
-    /// return true iif the data has been derived
-    fn has_derived_data(&self) -> bool {
-        !self.subcubes.is_empty()
-    }
-
-    //mi clear_derived_data
-    /// Clear the derived data (lists of stars in which subcubes, for
-    /// example)
-    fn clear_derived_data(&mut self) {
-        if self.has_derived_data() {
-            self.subcubes.clear();
+    //cp load_catalog
+    pub fn load_catalog<P: AsRef<Path>>(
+        catalog_filename: P,
+        magnitude: f32,
+    ) -> Result<Self, Error> {
+        match catalog_filename
+            .as_ref()
+            .extension()
+            .and_then(|x| x.to_str())
+        {
+            Some("json") => {
+                let s = std::fs::read_to_string(catalog_filename)?;
+                let mut catalog: Self = serde_json::from_str(&s)?;
+                catalog.retain(move |s, _n| s.brighter_than(magnitude));
+                catalog.sort();
+                Ok(catalog)
+            }
+            #[cfg(feature = "postcard")]
+            Some("pst") => {
+                let data = std::fs::read(catalog_filename)?;
+                let mut catalog: Self = postcard::from_bytes(&data)?;
+                catalog.retain(move |s, _n| s.brighter_than(magnitude));
+                catalog.sort();
+                Ok(catalog)
+            }
+            #[cfg(feature = "csv")]
+            Some("csv") => {
+                let mut catalog = Self::default();
+                let _ = catalog;
+                {
+                    let f = std::fs::File::open(catalog_filename)?;
+                    hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
+                }
+                catalog.sort();
+                Ok(catalog)
+            }
+            None => {
+                let mut catalog = Self::default();
+                #[cfg(feature = "hipp_bright")]
+                if catalog_filename.as_ref().as_os_str().as_encoded_bytes() == b"hipp_bright" {
+                    catalog = postcard::from_bytes(hipparcos::HIPP_BRIGHT_PST)?;
+                    catalog.retain(move |s, _n| s.brighter_than(magnitude));
+                }
+                if catalog.is_empty() {
+                    return Err(Error::UnknownCatalog);
+                }
+                catalog.sort();
+                Ok(catalog)
+            }
+            _ => Err(Error::UnknownCatalogExtension),
         }
-    }
-
-    //mp derive_data
-    /// Derive data from the stars in the catalog - such as what stars
-    /// are in which subcubes
-    ///
-    /// This does not impact the sorting - indeed, usually the catalog
-    /// is sorted before the data is derived.
-    pub fn derive_data(&mut self) {
-        if self.has_derived_data() {
-            return;
-        }
-        self.allocate_subcubes();
     }
 
     //mp add_star
@@ -159,32 +135,6 @@ impl Catalog {
         self.clear_derived_data();
         self.sorted = false;
         self.stars.push(star);
-    }
-
-    //mi allocate_subcubes
-    /// Allocate the subcubes and put the stars in appropriately
-    fn allocate_subcubes(&mut self) {
-        if self.has_derived_data() {
-            return;
-        }
-        self.subcubes.clear();
-        for _ in 0..Subcube::NUM_SUBCUBES {
-            self.subcubes.push(vec![]);
-        }
-        for (i, s) in self.stars.iter().enumerate() {
-            self.subcubes[s.subcube.as_usize()].push(CatalogIndex(i));
-        }
-    }
-
-    //mp sort
-    /// Sort the stars so that to create the index (and hence
-    /// afterwards they can be searched by id)
-    ///
-    /// To do: Must remap name identifiers too
-    pub fn sort(&mut self) {
-        self.stars.sort_by_key(|a| a.id);
-        self.clear_derived_data();
-        self.sorted = true;
     }
 
     //mp add_name
@@ -217,6 +167,133 @@ impl Catalog {
         Ok(())
     }
 
+    //mp retain
+    /// Retain stars that match a certain criterion; the rest are
+    /// dropped
+    ///
+    /// This should be invoked prior to any stars being named; it also
+    /// clears the derived data (e.g. geometric searching will not be
+    /// allowed until a derive_data() call is invoked)
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: StarFilterFn,
+    {
+        self.sorted = false;
+        self.clear_derived_data();
+        let mut i = 0;
+        self.stars.retain(move |s| {
+            i += 1;
+            f(s, i)
+        });
+    }
+}
+
+//ip Catalog - Accessors
+impl Catalog {
+    //mp len
+    /// Get the number of stars in the catalog
+    pub fn len(&self) -> usize {
+        self.stars.len()
+    }
+
+    //mp is_empty
+    /// Returns true if the catalog contains no stars
+    pub fn is_empty(&self) -> bool {
+        self.stars.is_empty()
+    }
+
+    //mp is_sorted
+    /// Returns true if the catalog has been sorted (and is thus ready
+    /// for names to be added)
+    pub fn is_sorted(&self) -> bool {
+        self.sorted
+    }
+
+    //mi has_derived_data
+    /// return true iif the data has been derived
+    fn has_derived_data(&self) -> bool {
+        !self.subcubes.is_empty()
+    }
+}
+
+//ip Catalog - filtering
+impl Catalog {
+    //mp clear_filter
+    pub fn clear_filter(&mut self) -> StarFilter {
+        std::mem::take(&mut self.filter)
+    }
+
+    //ap filter
+    pub fn filter(&self) -> &StarFilter {
+        &self.filter
+    }
+
+    //mp set_filter
+    pub fn set_filter(&mut self, f: StarFilter) {
+        self.filter = f;
+    }
+
+    //mp add_filter
+    pub fn add_filter(&mut self, f: StarFilter) -> StarFilter {
+        let f_orig = self.filter.clone();
+        self.filter = f_orig.clone().then(f);
+        f_orig
+    }
+}
+
+//ip Catalog - Derive data
+impl Catalog {
+    //mi clear_derived_data
+    /// Clear the derived data (lists of stars in which subcubes, for
+    /// example)
+    fn clear_derived_data(&mut self) {
+        if self.has_derived_data() {
+            self.subcubes.clear();
+        }
+    }
+
+    //mp derive_data
+    /// Derive data from the stars in the catalog - such as what stars
+    /// are in which subcubes
+    ///
+    /// This does not impact the sorting - indeed, usually the catalog
+    /// is sorted before the data is derived.
+    pub fn derive_data(&mut self) {
+        if self.has_derived_data() {
+            return;
+        }
+        self.allocate_subcubes();
+    }
+
+    //mi allocate_subcubes
+    /// Allocate the subcubes and put the stars in appropriately
+    fn allocate_subcubes(&mut self) {
+        if self.has_derived_data() {
+            return;
+        }
+        self.subcubes.clear();
+        for _ in 0..Subcube::NUM_SUBCUBES {
+            self.subcubes.push(vec![]);
+        }
+        for (i, s) in self.stars.iter().enumerate() {
+            self.subcubes[s.subcube.as_usize()].push(CatalogIndex(i));
+        }
+    }
+
+    //mp sort
+    /// Sort the stars so that to create the index (and hence
+    /// afterwards they can be searched by id)
+    ///
+    /// To do: Must remap name identifiers too
+    pub fn sort(&mut self) {
+        self.stars.sort_by_key(|a| a.id);
+        self.clear_derived_data();
+        self.sorted = true;
+    }
+}
+
+//ip Catalog - Searching
+impl Catalog {
     //mp find_sorted
     /// Find a star from its ID
     ///
@@ -259,22 +336,26 @@ impl Catalog {
         }
     }
 
-    //mp closest_to
-    /// Find the closest star in the catalog given an RA and DE in radians
+    //mp closest_to_dir
+    /// Find the closest star in the catalog given a direction vector
     ///
     /// This requires the catalog to have had its data derived
     /// beforehand
-    pub fn closest_to(&self, ra: f64, de: f64) -> Option<(f64, CatalogIndex)> {
+    #[track_caller]
+    pub fn closest_to_dir<I>(&self, subcube_iter: I, v: &[f64; 3]) -> Option<(f64, CatalogIndex)>
+    where
+        I: Iterator<Item = Subcube>,
+    {
         assert!(
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
-        let v = Star::vec_of_ra_de(ra, de);
-        let s = Subcube::of_vector(&v);
+        let v = (*v).into();
         let mut closest = None;
-        for s in s.iter_range(1) {
+        for s in subcube_iter {
             for index in self[s].iter() {
-                let c = v.dot(&self.stars[index.0].vector);
+                let cv = &self[*index].vector;
+                let c = cv.dot(&v);
                 if let Some((cc, _)) = closest {
                     if c > cc {
                         closest = Some((c, *index));
@@ -287,27 +368,23 @@ impl Catalog {
         closest
     }
 
-    //mp iter_stars
-    pub fn iter_stars(&self) -> StarIter {
-        StarIter {
-            catalog: self,
-            i: 0,
-        }
-    }
-
-    //mp iter_within_subcubes
-    /// Iterate over all the stars in the catalog within a set of
-    /// subcubes provide by an iterator
-    pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<I>
+    //mp closest_to_ra_de
+    /// Find the closest star in the catalog given an RA and DE in radians
+    ///
+    /// This requires the catalog to have had its data derived
+    /// beforehand
+    #[track_caller]
+    pub fn closest_to_ra_de<I>(
+        &self,
+        subcube_iter: I,
+        ra: f64,
+        de: f64,
+    ) -> Option<(f64, CatalogIndex)>
     where
-        I: std::iter::Iterator<Item = Subcube>,
+        I: Iterator<Item = Subcube>,
     {
-        StarSubcubeIter {
-            catalog: self,
-            subcube_iter,
-            subcube: None,
-            i: 0,
-        }
+        let v = Star::vec_of_ra_de(ra, de);
+        self.closest_to_dir(subcube_iter, v.as_ref())
     }
 
     //mp find_stars_around
@@ -506,6 +583,33 @@ impl Catalog {
     }
 }
 
+//ip Catalog - Iterators
+impl Catalog {
+    //mp iter_stars
+    pub fn iter_stars(&self) -> StarIter {
+        StarIter {
+            catalog: self,
+            i: 0,
+        }
+    }
+
+    //mp iter_within_subcubes
+    /// Iterate over all the stars in the catalog within a set of
+    /// subcubes provide by an iterator
+    pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<I>
+    where
+        I: std::iter::Iterator<Item = Subcube>,
+    {
+        StarSubcubeIter {
+            catalog: self,
+            subcube_iter,
+            subcube: None,
+            i: 0,
+        }
+    }
+}
+
+//ip Index<CatalogIndex> for Catalog
 impl std::ops::Index<CatalogIndex> for Catalog {
     type Output = Star;
     fn index(&self, s: CatalogIndex) -> &Star {
@@ -513,6 +617,7 @@ impl std::ops::Index<CatalogIndex> for Catalog {
     }
 }
 
+//ip Index<Subcube> for Catalog
 impl std::ops::Index<Subcube> for Catalog {
     type Output = Vec<CatalogIndex>;
     fn index(&self, q: Subcube) -> &Vec<CatalogIndex> {
@@ -524,10 +629,16 @@ impl std::ops::Index<Subcube> for Catalog {
 //         &mut self.subcubes[q.as_usize()]
 //     }
 // }
+
+//a StarIter
+//tp StarIter
+/// An iterator over *all* the stars in a catalog
 pub struct StarIter<'a> {
     catalog: &'a Catalog,
     i: usize,
 }
+
+//ip Iterator for StarIter
 impl<'a> std::iter::Iterator for StarIter<'a> {
     type Item = &'a Star;
     fn next(&mut self) -> Option<&'a Star> {
@@ -541,6 +652,10 @@ impl<'a> std::iter::Iterator for StarIter<'a> {
     }
 }
 
+//a StarSubcubeIter
+//tp StarSubcubeIter
+/// An iterator of stars in a catalog that line within subcubes
+/// provided by an iterator of Subcube
 pub struct StarSubcubeIter<'a, I>
 where
     I: std::iter::Iterator<Item = Subcube>,
@@ -550,6 +665,8 @@ where
     subcube: Option<Subcube>,
     i: usize,
 }
+
+//ip Iterator for StarSubcubeIter
 impl<'a, I> std::iter::Iterator for StarSubcubeIter<'a, I>
 where
     I: std::iter::Iterator<Item = Subcube>,
