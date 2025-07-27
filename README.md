@@ -2,9 +2,12 @@
 
 This crate provides binaries and a library.
 
-The star-catalog a library manages a star catalog, which contains stars with
-locations (from right ascension and declination, distance, magnitude,
-color, and id).
+The star-catalog library manages a star catalog, which contains stars
+with locations (from right ascension and declination, distance,
+magnitude, color, and id). The catalog can be searched by id or by
+geometry; the libray includes a facility to find candidates for a star
+'triangle' - that is, three stars whose visual angular separation is
+known (approximately).
 
 ## star_catalog binary
 
