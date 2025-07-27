@@ -137,10 +137,10 @@ impl Subcube {
     //cp of_vector
     /// Get the subcube of a unit vector (which is thus a point on the
     /// unit sphere)
-    pub fn of_vector(v: &Vec3) -> Self {
-        let xe = Self::index_of_coord(v[0]);
-        let ye = Self::index_of_coord(v[1]);
-        let ze = Self::index_of_coord(v[2]);
+    pub fn of_vector(vector: &[f64; 3]) -> Self {
+        let xe = Self::index_of_coord(vector[0]);
+        let ye = Self::index_of_coord(vector[1]);
+        let ze = Self::index_of_coord(vector[2]);
         (xe, ye, ze).into()
     }
 
@@ -150,9 +150,9 @@ impl Subcube {
         self.0 as usize
     }
 
-    //ap center
+    //ap center_non_unit
     /// Get the vector of the centre of the Subcube (this is *NOT* a unit vector)!
-    pub fn center(&self) -> Vec3 {
+    pub(crate) fn center_non_unit(&self) -> Vec3 {
         let (x, y, z): (usize, usize, usize) = self.into();
         [
             Self::coord_of_index(x),
@@ -162,6 +162,12 @@ impl Subcube {
         .into()
     }
 
+    //ap center
+    /// Get the vector of the centre of the Subcube (this is *NOT* a unit vector)!
+    pub fn center(&self) -> [f64; 3] {
+        self.center_non_unit().into()
+    }
+
     //ap may_be_on_sphere
     /// Return true if the subcube might contain part of the unit
     /// sphere
@@ -169,11 +175,11 @@ impl Subcube {
     /// This returns false if the centre is too far from the unit
     /// sphere for any part of the subcube to overlap the unit sphere
     pub fn may_be_on_sphere(&self) -> bool {
-        let r = self.center().length();
+        let r = self.center_non_unit().length();
         (1.0 - Self::SUBCUBE_RADIUS..=1.0 + Self::SUBCUBE_RADIUS).contains(&r)
     }
 
-    //mp cos_angle_on_sphere
+    //mc cos_angle_on_sphere
     /// Return None if the subcube definitely does no intersect with the unit sphere.
     ///
     /// Returns Some(cos(angle)) if the subcube might intersect with
@@ -185,8 +191,8 @@ impl Subcube {
     /// of (angle of search + SUBCUBE ANGLE)
     ///
     /// v *MUST* be a unit vector (i.e. on the unit sphere)
-    pub fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f64> {
-        let c = self.center();
+    pub(crate) fn cos_angle_on_sphere(&self, v: &Vec3) -> Option<f64> {
+        let c = self.center_non_unit();
         let r = c.length();
         if (1.0 - Self::SUBCUBE_RADIUS..=1.0 + Self::SUBCUBE_RADIUS).contains(&r) {
             Some(v.dot(&c) / r)

@@ -5,6 +5,8 @@ use clap::{ArgMatches, Command};
 use geo_nd::Vector;
 use star_catalog::{cmdline, Catalog, CatalogIndex, Star, Subcube};
 
+type Vec3 = geo_nd::FArray<f64, 3>;
+
 #[cfg(feature = "image")]
 use geo_nd::Quaternion;
 #[cfg(feature = "image")]
@@ -400,22 +402,23 @@ This is in degrees, and defaults to 0.
     if angle > 0. {
         catalog.derive_data();
         let mut ids: Vec<usize> = vec![];
-        let mut v = Star::vec_of_ra_de(
+        let mut v: Vec3 = Star::vec_of_ra_de(
             cmdline::right_ascension(&matches, 0.),
             cmdline::declination(&matches, 0.),
-        );
+        )
+        .into();
         if let Some(index) = find_id_or_name(&catalog, cmdline::star(&matches).map(|a| a.as_str()))?
         {
-            v = catalog[index].vector;
+            v = (*catalog[index].vector()).into();
         }
 
         let cos_angle = angle.cos();
         for s in catalog.iter_stars() {
-            if s.vector.dot(&v) >= cos_angle {
-                ids.push(s.id);
+            if v.dot(&(*s.vector()).into()) >= cos_angle {
+                ids.push(s.id());
             }
         }
-        catalog.retain(move |s, _n| ids.binary_search(&s.id).is_ok());
+        catalog.retain(move |s, _n| ids.binary_search(&s.id()).is_ok());
         catalog.sort();
     }
 
@@ -451,11 +454,11 @@ This is in degrees, and defaults to 0.
 }
 
 fn display_star(s: &Star) {
-    let id = s.id;
-    let ra = s.ra * 180.0 / std::f64::consts::PI;
-    let de = s.de * 180.0 / std::f64::consts::PI;
-    let ly = s.ly;
-    let mag = s.mag;
+    let id = s.id();
+    let ra = s.ra() * 180.0 / std::f64::consts::PI;
+    let de = s.de() * 180.0 / std::f64::consts::PI;
+    let ly = s.distance();
+    let mag = s.magnitude();
     println!("{id:8} : {ra}, {de} : {ly} :{mag}");
 }
 
@@ -543,7 +546,12 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
         let a12 = catalog[*b].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
         println!(
             "{}, {}, {} : {} {} {}",
-            catalog[*a].id, catalog[*b].id, catalog[*c].id, a01, a02, a12,
+            catalog[*a].id(),
+            catalog[*b].id(),
+            catalog[*c].id(),
+            a01,
+            a02,
+            a12,
         );
     }
     Ok(())

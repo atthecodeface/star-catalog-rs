@@ -25,7 +25,7 @@ fn test_on_sphere() -> Result<(), Box<dyn Error>> {
     }
 
     for sn in Subcube::iter_all() {
-        let c = sn.center();
+        let c: Vec3 = sn.center().into();
         let xyz: (usize, usize, usize) = sn.into();
         let l = c.length();
         let mut l_min = l;

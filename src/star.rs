@@ -49,30 +49,30 @@ pub struct Star {
     /// is provided as a 'usize' as this is commonly a number, and it
     /// provides for simple serialization and deserialization of the
     /// [Star].
-    pub id: usize,
+    pub(crate) id: usize,
 
     /// The right ascension of the star in radians
-    pub ra: f64,
+    pub(crate) ra: f64,
 
     /// The declination of the star in radians
-    pub de: f64,
+    pub(crate) de: f64,
 
     /// The approximate distance to the star in lightyears
-    pub ly: f32,
+    pub(crate) ly: f32,
 
     /// The apparent magnitude of the star
-    pub mag: f32,
+    pub(crate) mag: f32,
 
     /// The blue-violet value for the star (a means to provide some
     /// color, type, or temperature for the star)
-    pub bv: f32,
+    pub(crate) bv: f32,
 
     /// A unit vector in the direction (hence a vector on the unit
     /// sphere)
-    pub vector: Vec3,
+    pub(crate) vector: Vec3,
 
     /// The subcube that the star's positon on the unit sphere lies within
-    pub subcube: Subcube,
+    pub(crate) subcube: Subcube,
 }
 
 //ip From<Star> for StarSerialized
@@ -89,7 +89,7 @@ impl From<StarSerialized> for Star {
     }
 }
 
-//ip Star
+//ip Star - accessors
 impl Star {
     //ap temp
     /// Get an temperature for the star
@@ -98,6 +98,57 @@ impl Star {
         4600.0 * (1.0 / (1.7 + 0.92 * self.bv) + 1.0 / (0.62 + 0.92 * self.bv))
     }
 
+    //ap id
+    /// Get the id
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    //ap ra
+    /// Get the right ascension of the star
+    pub fn ra(&self) -> f64 {
+        self.ra
+    }
+
+    //ap de
+    /// Get the declination of the star
+    pub fn de(&self) -> f64 {
+        self.de
+    }
+
+    //ap distance
+    /// Get the distance of the star
+    pub fn distance(&self) -> f32 {
+        self.ly
+    }
+
+    //ap magnitude
+    /// Get the magnitude of the star
+    pub fn magnitude(&self) -> f32 {
+        self.mag
+    }
+
+    //ap bv
+    /// Get the bv of the star
+    pub fn bv(&self) -> f32 {
+        self.bv
+    }
+
+    //ap vector
+    /// Get the unit vector direction of the star
+    pub fn vector(&self) -> &[f64; 3] {
+        self.vector.as_ref()
+    }
+
+    //ap subcube
+    /// Get the subcube
+    pub fn subcube(&self) -> Subcube {
+        self.subcube
+    }
+}
+
+//ip Star
+impl Star {
     //fp temp_to_rgb
     /// This only really works for t >= 1600
     ///
@@ -155,11 +206,11 @@ impl Star {
 
     //fi vec_of_ra_de
     /// Calculate a unit vector from a right ascension and declination
-    pub fn vec_of_ra_de(ra: f64, de: f64) -> Vec3 {
+    pub fn vec_of_ra_de(ra: f64, de: f64) -> [f64; 3] {
         let vx = ra.cos() * de.cos();
         let vy = ra.sin() * de.cos();
         let vz = de.sin();
-        [vx, vy, vz].into()
+        [vx, vy, vz]
     }
 
     //ap brighter_than
@@ -173,6 +224,7 @@ impl Star {
     pub fn new(id: usize, ra: f64, de: f64, ly: f32, mag: f32, bv: f32) -> Self {
         let vector = Self::vec_of_ra_de(ra, de);
         let subcube = Subcube::of_vector(&vector);
+        let vector = vector.into();
         Self {
             id,
             ra,

@@ -342,7 +342,11 @@ impl Catalog {
     /// This requires the catalog to have had its data derived
     /// beforehand
     #[track_caller]
-    pub fn closest_to_dir<I>(&self, subcube_iter: I, v: &[f64; 3]) -> Option<(f64, CatalogIndex)>
+    pub fn closest_to_dir<I>(
+        &self,
+        subcube_iter: I,
+        vector: &[f64; 3],
+    ) -> Option<(f64, CatalogIndex)>
     where
         I: Iterator<Item = Subcube>,
     {
@@ -350,12 +354,12 @@ impl Catalog {
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
-        let v = (*v).into();
+        let vector = (*vector).into();
         let mut closest = None;
         for s in subcube_iter {
             for index in self[s].iter() {
                 let cv = &self[*index].vector;
-                let c = cv.dot(&v);
+                let c = cv.dot(&vector);
                 if let Some((cc, _)) = closest {
                     if c > cc {
                         closest = Some((c, *index));
@@ -384,14 +388,20 @@ impl Catalog {
         I: Iterator<Item = Subcube>,
     {
         let v = Star::vec_of_ra_de(ra, de);
-        self.closest_to_dir(subcube_iter, v.as_ref())
+        self.closest_to_dir(subcube_iter, &v)
     }
 
     //mp find_stars_around
     /// Find stars within a certain angle around a vector
     ///
     /// Needs data to have been derived for the Catalog
-    pub fn find_stars_around(&self, vector: &Vec3, max_angle: f64) -> Vec<CatalogIndex> {
+    #[track_caller]
+    pub fn find_stars_around(&self, vector: &[f64; 3], max_angle: f64) -> Vec<CatalogIndex> {
+        assert!(
+            self.has_derived_data(),
+            "Attempt to find a star in the Catalog that has not has its data derived"
+        );
+
         let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
         let max_cos = max_angle.cos();
         let max_subcube_cos = (max_angle + subcube_max_angle).cos();
@@ -399,11 +409,13 @@ impl Catalog {
 
         // Run through all the supplied subcubes
         let mut result = vec![];
-        for sub in Subcube::of_vector(vector).iter_range(subcube_range) {
+        let subcubes = Subcube::of_vector(vector).iter_range(subcube_range);
+        let vector: Vec3 = (*vector).into();
+        for sub in subcubes {
             if self[sub].is_empty() {
                 continue;
             }
-            let Some(c) = sub.cos_angle_on_sphere(vector) else {
+            let Some(c) = sub.cos_angle_on_sphere(&vector) else {
                 continue;
             };
             if c < max_subcube_cos {
@@ -412,7 +424,7 @@ impl Catalog {
 
             for index in self[sub].iter() {
                 let star = &self[*index];
-                let c = star.vector.dot(vector);
+                let c = star.vector.dot(&vector);
                 if c < max_cos {
                     continue;
                 }
@@ -429,6 +441,7 @@ impl Catalog {
     /// Find
     ///
     /// Needs data to have been derived for the Catalog
+    #[track_caller]
     pub fn find_star_triangles<I>(
         &self,
         subcube_iter: I,
@@ -438,6 +451,11 @@ impl Catalog {
     where
         I: Iterator<Item = Subcube>,
     {
+        assert!(
+            self.has_derived_data(),
+            "Attempt to find a star in the Catalog that has not has its data derived"
+        );
+
         // Find the range of cosines for the angles that we will accept
         //
         // Note cos(0) > cos(0.1) so min cos is cos(angle + max)
@@ -498,7 +516,7 @@ impl Catalog {
             //
             // However, for small angles the subcubes_to_search will only
             // be about 6 things, all relevant,
-            let sub0_center = sub0.center().normalize();
+            let sub0_center = sub0.center_non_unit().normalize();
             subcubes_to_search.clear();
             let min_cos = subcube_cos_angle_ranges[0]
                 .0
@@ -525,7 +543,7 @@ impl Catalog {
                 let subcubes_for_s0 = subcubes_to_search
                     .iter()
                     .filter(|s| {
-                        let c = s.center().normalize().dot(&sub0_center);
+                        let c = s.center_non_unit().normalize().dot(&sub0_center);
                         c > subcube_cos_angle_ranges[0].0 && c < subcube_cos_angle_ranges[0].1
                     })
                     .copied();
@@ -541,16 +559,16 @@ impl Catalog {
                             continue;
                         }
 
-                        let sub1_center = sub1.center().normalize();
+                        let sub1_center = sub1.center_non_unit().normalize();
                         let subcubes_for_s1 = subcubes_to_search
                             .iter()
                             .filter(|s| {
-                                let c = s.center().normalize().dot(&sub1_center);
+                                let c = s.center_non_unit().normalize().dot(&sub1_center);
                                 c > subcube_cos_angle_ranges[2].0
                                     && c < subcube_cos_angle_ranges[2].1
                             })
                             .filter(|s| {
-                                let c = s.center().normalize().dot(&sub0_center);
+                                let c = s.center_non_unit().normalize().dot(&sub0_center);
                                 c > subcube_cos_angle_ranges[1].0
                                     && c < subcube_cos_angle_ranges[1].1
                             })

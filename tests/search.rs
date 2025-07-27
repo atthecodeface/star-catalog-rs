@@ -40,7 +40,12 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
         let d12 = (a12 - angles_to_find[2]).abs();
         eprintln!(
             "{}, {}, {} : {} {} {}",
-            catalog[*a].id, catalog[*b].id, catalog[*c].id, d01, d02, d12,
+            catalog[*a].id(),
+            catalog[*b].id(),
+            catalog[*c].id(),
+            d01,
+            d02,
+            d12,
         );
         if d01 > max_angle_delta || d02 > max_angle_delta || d12 > max_angle_delta {
             errs += 1;
