@@ -358,6 +358,9 @@ impl Catalog {
         let mut closest = None;
         for s in subcube_iter {
             for index in self[s].iter() {
+                if !self.filter.call(&self[*index], 0) {
+                    continue;
+                }
                 let cv = &self[*index].vector;
                 let c = cv.dot(&vector);
                 if let Some((cc, _)) = closest {
@@ -438,7 +441,7 @@ impl Catalog {
     }
 
     //mp find_star_triangles
-    /// Find
+    /// Find a triangle of stars given the visual angles between them
     ///
     /// Needs data to have been derived for the Catalog
     #[track_caller]
@@ -590,7 +593,14 @@ impl Catalog {
                                 if !self.filter.call(s0, result.len()) {
                                     continue;
                                 }
-                                result.push((*i0, *i1, *i2));
+                                // i0<>i1 matches angle [0] AB
+                                // i0<>i2 matches angle [1] BC
+                                // i1<>i2 matches angle [2] CA
+                                //
+                                // So the triangle (i0, i1, i2) is BAC
+                                //
+                                // For ABC we need i1, i0, i2
+                                result.push((*i1, *i0, *i2));
                             }
                         }
                     }

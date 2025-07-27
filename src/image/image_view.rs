@@ -192,7 +192,7 @@ impl ImageView {
             for de_i in 0..de_steps_for_180_degrees {
                 let de = ((de_i as f64) / (de_steps_for_180_degrees as f64) * 2.0 - 1.0)
                     * std::f64::consts::PI;
-                let v = Star::vec_of_ra_de(ra, de);
+                let v = Star::vec_of_ra_de(ra, de).into();
                 if let Some(xy) = self.pxy_of_vec(&v, 0.) {
                     self.put(xy[0] as u32, xy[1] as u32, color);
                 }
@@ -223,7 +223,7 @@ impl ImageView {
             let ra_steps_for_180_degrees = 180 * 60 * 60 / ra_step_arcsecs;
             for ra_i in 0..2 * ra_steps_for_180_degrees {
                 let ra = (ra_i as f64) / (ra_steps_for_180_degrees as f64) * std::f64::consts::PI;
-                let v = Star::vec_of_ra_de(ra, de);
+                let v = Star::vec_of_ra_de(ra, de).into();
                 if let Some(xy) = self.pxy_of_vec(&v, 0.) {
                     self.put(xy[0] as u32, xy[1] as u32, color);
                 }

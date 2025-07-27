@@ -593,19 +593,21 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
     #[cfg(feature = "image")]
     {
         let tan_fov = (cmdline::fov(matches, 60.0) / 2.0).tan();
-        let mut v = Star::vec_of_ra_de(
+        let mut v: Vec3 = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
-        );
+        )
+        .into();
         if let Some(index) = find_id_or_name(&catalog, cmdline::star(matches).map(|a| a.as_str()))?
         {
-            v = catalog[index].vector;
+            v = (*catalog[index].vector()).into();
         }
 
-        let mut up = [0., 0., 1.].into();
+        let mut up: Vec3 = [0., 0., 1.].into();
         let angle = cmdline::angle(matches, 0.0);
         if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
-            up = catalog[index].vector - v;
+            up = (*catalog[index].vector()).into();
+            up -= v;
         }
         let orient = Quat::look_at(&v, &up);
         let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
@@ -641,18 +643,20 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
     let _ = matches;
     #[cfg(feature = "image")]
     {
-        let mut v = Star::vec_of_ra_de(
+        let mut v: Vec3 = Star::vec_of_ra_de(
             cmdline::right_ascension(matches, 0.),
             cmdline::declination(matches, 0.),
-        );
+        )
+        .into();
         if let Some(index) = find_id_or_name(&catalog, cmdline::star(matches).map(|a| a.as_str()))?
         {
-            v = catalog[index].vector;
+            v = (*catalog[index].vector()).into();
         }
-        let mut up = [0., 0., 1.].into();
+        let mut up: Vec3 = [0., 0., 1.].into();
         let angle = cmdline::angle(matches, 0.0);
         if let Some(index) = find_id_or_name(&catalog, cmdline::up(matches).map(|a| a.as_str()))? {
-            up = catalog[index].vector - v;
+            up = (*catalog[index].vector()).into();
+            up -= v;
         }
         let orient = Quat::look_at(&v, &up);
         let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
