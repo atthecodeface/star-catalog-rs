@@ -137,7 +137,6 @@ pub fn read_to_catalog<R: std::io::Read>(
 /// Aliases of HIP identifiers to common names of stars
 ///
 /// Source: <https://www.cosmos.esa.int/web/hipparcos/common-star-names>
-
 pub const HIP_ALIASES: &[(usize, &str)] = &[
     (677, "Alpheratz"),
     (746, "Caph"),

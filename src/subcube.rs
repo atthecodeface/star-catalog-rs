@@ -217,11 +217,11 @@ impl Subcube {
     /// and all its immediate neighbors
     pub fn iter_range(&self, dxyz: usize) -> SubcubeRangeIter {
         let xyz: (usize, usize, usize) = (*self).into();
-        let xmin = if xyz.0 < dxyz { 0 } else { xyz.0 - dxyz };
+        let xmin = xyz.0.saturating_sub(dxyz);
         let xmax = (xyz.0 + dxyz + 1).min(Self::ELE_PER_SIDE);
-        let ymin = if xyz.1 < dxyz { 0 } else { xyz.1 - dxyz };
+        let ymin = xyz.1.saturating_sub(dxyz);
         let ymax = (xyz.1 + dxyz + 1).min(Self::ELE_PER_SIDE);
-        let zmin = if xyz.2 < dxyz { 0 } else { xyz.2 - dxyz };
+        let zmin = xyz.2.saturating_sub(dxyz);
         let zmax = (xyz.2 + dxyz + 1).min(Self::ELE_PER_SIDE);
         SubcubeRangeIter {
             xyz: (xmin, ymin, zmin),
