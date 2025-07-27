@@ -294,6 +294,12 @@ impl Catalog {
 
 //ip Catalog - Searching
 impl Catalog {
+    //mp is_filtered
+    /// Run all the filters
+    pub fn is_filtered(&self, star: &Star, n: usize) -> bool {
+        self.filter.call(star, n)
+    }
+
     //mp find_sorted
     /// Find a star from its ID
     ///
@@ -542,6 +548,9 @@ impl Catalog {
 
             for i0 in self[sub0].iter() {
                 let s0 = &self[*i0];
+                if !self.filter.call(s0, result.len()) {
+                    continue;
+                }
                 // iterate through subcubes_to_search, skipping those that are nowhere near angles_to_find[0] away
                 let subcubes_for_s0 = subcubes_to_search
                     .iter()
@@ -556,6 +565,9 @@ impl Catalog {
                             continue;
                         }
                         let s1 = &self[*i1];
+                        if !self.filter.call(s1, result.len()) {
+                            continue;
+                        }
 
                         let c_s01 = s0.cos_angle_between(s1);
                         if c_s01 < cos_angle_ranges[0].0 || c_s01 > cos_angle_ranges[0].1 {
@@ -582,6 +594,9 @@ impl Catalog {
                                     continue;
                                 }
                                 let s2 = &self[*i2];
+                                if !self.filter.call(s2, result.len()) {
+                                    continue;
+                                }
                                 let c_s02 = s0.cos_angle_between(s2);
                                 if c_s02 < cos_angle_ranges[1].0 || c_s02 > cos_angle_ranges[1].1 {
                                     continue;
@@ -590,17 +605,15 @@ impl Catalog {
                                 if c_s12 < cos_angle_ranges[2].0 || c_s12 > cos_angle_ranges[2].1 {
                                     continue;
                                 }
-                                if !self.filter.call(s0, result.len()) {
-                                    continue;
-                                }
-                                // i0<>i1 matches angle [0] AB
-                                // i0<>i2 matches angle [1] BC
-                                // i1<>i2 matches angle [2] CA
+                                // angles [0], [1] and [2] are the angles at the points A, B and C
+                                // i0<>i1 matches angle [0] at A (star opposite BC)
+                                // i0<>i2 matches angle [1] at B (star opposite CA)
+                                // i1<>i2 matches angle [2] at C (star opposite AB)
                                 //
-                                // So the triangle (i0, i1, i2) is BAC
+                                // Hence i0 is C; i1 is B, i2 is A
                                 //
-                                // For ABC we need i1, i0, i2
-                                result.push((*i1, *i0, *i2));
+                                // For the angles opposite AB/CB/AC we need C,A,B which is i2, i1, i0
+                                result.push((*i2, *i1, *i0));
                             }
                         }
                     }

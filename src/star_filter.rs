@@ -68,7 +68,8 @@ impl StarFilter {
     /// Create a new filter that returns true for stars that are
     /// closer in angle to a (unit) vector than a specified angle
     /// (this being given by its cosine)
-    pub fn cos_to_gt(v: Vec3, cos: f64) -> Self {
+    pub fn cos_to_gt(v: [f64; 3], cos: f64) -> Self {
+        let v: Vec3 = v.into();
         let f = Rc::new(move |s: &Star, _n: usize| v.dot(&s.vector) > cos);
         Self(f)
     }

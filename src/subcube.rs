@@ -279,6 +279,7 @@ impl std::ops::Add<isize> for Subcube {
 
 //tp SubcubeRangeIter
 /// Iterator over a range of Subcubes
+#[derive(Debug, Clone)]
 pub struct SubcubeRangeIter {
     xyz: (usize, usize, usize),
     xrange: std::ops::Range<usize>,
