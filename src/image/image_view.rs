@@ -1,5 +1,5 @@
 //a Imports
-use geo_nd::{Quaternion, Vector, Vector3};
+use geo_nd::{Quaternion, Vector};
 use image::{DynamicImage, GenericImage, Rgba};
 
 use crate::Star;
@@ -62,7 +62,7 @@ impl ImageView {
             height,
             offset: (0, 0),
             tan_fov_x2: 2.0,
-            orient: Quat::unit(),
+            orient: Quat::default(),
             image,
         }
     }
@@ -295,9 +295,9 @@ impl ImageView {
     ///
     pub fn draw_line_between_stars(&mut self, c: Rgba<u8>, s0: &Star, s1: &Star) {
         // Get q = quaternion that maps s0 to [1,0,0], and s1 to [c,s,0]
-        let up = s0.vector.cross_product(&s1.vector).normalize();
-        let q = Quat::of_axis_angle(&[1., 0., 0.].into(), std::f64::consts::PI / 2.0)
-            * Quat::of_axis_angle(&[0., -1., 0.].into(), std::f64::consts::PI / 2.0)
+        let up = s0.vector.cross_product(s1.vector).normalize();
+        let q = Quat::of_axis_angle(&[1., 0., 0.], std::f64::consts::PI / 2.0)
+            * Quat::of_axis_angle(&[0., -1., 0.], std::f64::consts::PI / 2.0)
             * Quat::look_at(&s0.vector, &up);
         let angle = s0.cos_angle_between(s1).acos();
         // draw circle needs quat to map [1,0,0] to s0, and [c,s,0] to map to
@@ -342,8 +342,8 @@ impl ImageView {
             );
             angle -= MAX_ANGLE_TO_DRAW;
         }
-        let v0 = quat.apply3(&[1., 0., 0.].into());
-        let v1 = quat.apply3(&[angle.cos(), angle.sin(), 0.].into());
+        let v0: Vec3 = quat.apply3(&[1., 0., 0.]).into();
+        let v1: Vec3 = quat.apply3(&[angle.cos(), angle.sin(), 0.]).into();
         let Some(p0) = self.pxy_of_vec(&v0, self.width as f64) else {
             if self.pxy_of_vec(&v1, self.width as f64).is_none() {
                 return;
@@ -356,7 +356,9 @@ impl ImageView {
             angle /= 2.0;
             return self.draw_circle(c, quat, angle);
         };
-        let m = quat.apply3(&[(angle / 2.0).cos(), (angle / 2.0).sin(), 0.].into());
+        let m: Vec3 = quat
+            .apply3(&[(angle / 2.0).cos(), (angle / 2.0).sin(), 0.])
+            .into();
         let Some(pm) = self.pxy_of_vec(&m, self.width as f64) else {
             return;
         };

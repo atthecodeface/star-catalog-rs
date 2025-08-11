@@ -213,7 +213,7 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
         let star_name = catalog.find_name(name).unwrap();
         let star_name = &catalog[star_name];
         // let v = camera.vec_of_pxy(&[pxy.0 as f64, pxy.1 as f64].into());
-        let v = avg.apply3(&(*star_name.vector()).into());
+        let v = avg.apply3(star_name.vector()).into();
         let xy = camera.pxy_of_vec(&v);
         eprintln!("{name} {xy} {pxy:?}");
         // dx = data[name][0] - x
@@ -236,7 +236,7 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
         if !s.brighter_than(7.0) {
             continue;
         }
-        let v = avg.apply3(&(*s.vector()).into());
+        let v = avg.apply3(s.vector()).into();
         if let Some(xy) = camera.within_frame(camera.pxy_of_vec(&v)) {
             // eprintln!("{xy:?}");
             if xy.0 < 8 || xy.0 + 8 >= camera.width() {

@@ -10,12 +10,12 @@ help:
 
 .PHONY: test_all
 test_all:
+	cargo test --release --features image,postcard,csv,hipp_bright
 	cargo test --release
 	cargo test --release --features image
 	cargo test --release --features postcard
 	cargo test --release --features csv
 	cargo test --release --features hipp_bright
-	cargo test --release --features image,postcard,csv,hipp_bright
 
 .PHONY: release
 release:

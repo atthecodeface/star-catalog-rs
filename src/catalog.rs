@@ -84,7 +84,15 @@ impl Catalog {
             .and_then(|x| x.to_str())
         {
             Some("json") => {
-                let s = std::fs::read_to_string(catalog_filename)?;
+                let s = std::fs::read_to_string(catalog_filename.as_ref()).map_err(|e| {
+                    (
+                        e,
+                        format!(
+                            "failed to read json catalog file {:?}",
+                            catalog_filename.as_ref()
+                        ),
+                    )
+                })?;
                 let mut catalog: Self = serde_json::from_str(&s)?;
                 catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 catalog.sort();
@@ -92,7 +100,15 @@ impl Catalog {
             }
             #[cfg(feature = "postcard")]
             Some("pst") => {
-                let data = std::fs::read(catalog_filename)?;
+                let data = std::fs::read(catalog_filename.as_ref()).map_err(|e| {
+                    (
+                        e,
+                        format!(
+                            "failed to read postcard catalog file {:?}",
+                            catalog_filename.as_ref()
+                        ),
+                    )
+                })?;
                 let mut catalog: Self = postcard::from_bytes(&data)?;
                 catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 catalog.sort();
@@ -103,7 +119,15 @@ impl Catalog {
                 let mut catalog = Self::default();
                 let _ = catalog;
                 {
-                    let f = std::fs::File::open(catalog_filename)?;
+                    let f = std::fs::File::open(catalog_filename.as_ref()).map_err(|e| {
+                        (
+                            e,
+                            format!(
+                                "failed to read postcard catalog file {:?}",
+                                catalog_filename.as_ref()
+                            ),
+                        )
+                    })?;
                     hipparcos::read_to_catalog(&mut catalog, &f, magnitude)?;
                 }
                 catalog.sort();
@@ -360,7 +384,7 @@ impl Catalog {
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
-        let vector = (*vector).into();
+        let vector: Vec3 = vector.into();
         let mut closest = None;
         for s in subcube_iter {
             for index in self[s].iter() {

@@ -1,7 +1,7 @@
 [package]
 name = "star-catalog"
-version = "0.0.9"
-edition = "2024"
+version = "0.1.0"
+edition = "2021"
 readme = "README.md"
 authors = ["Gavin J Stark"]
 description = "A star catalog library and tool with loadable catalogs that are searchable by geometry"
@@ -30,7 +30,8 @@ features = ["alloc"]
 optional = true
 
 [dependencies.geo-nd]
-version = "0.5"
+version = "0.6"
+path = "../geo-nd-rs"
 
 [dependencies.serde]
 version = "1.0"

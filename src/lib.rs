@@ -210,7 +210,7 @@ pub type Vec4 = geo_nd::FArray<f64, 4>;
 
 /// A quaternion that represents orientations of views of a sky map;
 /// this includes the direction and 'up' for a camera, for example
-pub type Quat = geo_nd::QArray<f64, Vec3, Vec4>;
+pub type Quat = geo_nd::QArray<f64>;
 
 mod catalog;
 mod error;

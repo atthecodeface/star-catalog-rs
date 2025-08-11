@@ -6,8 +6,8 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     /// Std IO error
-    #[error("{0}")]
-    IO(#[from] std::io::Error),
+    #[error("{0}: {1}")]
+    IO(String, #[source] std::io::Error),
 
     /// Json parsing error
     #[error("{0}")]
@@ -39,4 +39,10 @@ pub enum Error {
     /// Failed to read a CSV file for a catalog
     #[error("Failed to read Postcard file: {0}")]
     Postcard(#[from] postcard::Error),
+}
+
+impl std::convert::From<(std::io::Error, String)> for Error {
+    fn from((e, s): (std::io::Error, String)) -> Error {
+        Error::IO(s, e)
+    }
 }

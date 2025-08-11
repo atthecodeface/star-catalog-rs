@@ -414,7 +414,7 @@ This is in degrees, and defaults to 0.
 
         let cos_angle = angle.cos();
         for s in catalog.iter_stars() {
-            if v.dot(&(*s.vector()).into()) >= cos_angle {
+            if v.dot(&s.vector()) >= cos_angle {
                 ids.push(s.id());
             }
         }
@@ -610,7 +610,7 @@ fn image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
             up -= v;
         }
         let orient = Quat::look_at(&v, &up);
-        let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
+        let orient = Quat::of_axis_angle(&[0., 0., 1.], angle) * orient;
 
         let width = cmdline::width(matches, 512) as u32;
         let height = cmdline::height(matches, 512) as u32;
@@ -659,7 +659,7 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
             up -= v;
         }
         let orient = Quat::look_at(&v, &up);
-        let orient = Quat::of_axis_angle(&[0., 0., 1.].into(), angle) * orient;
+        let orient = Quat::of_axis_angle(&[0., 0., 1.], angle) * orient;
 
         let width = cmdline::width(matches, 512) as u32;
         let height = cmdline::height(matches, 512) as u32;
@@ -671,36 +671,12 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
 
         for quadrant in 0..6 {
             let (x_ofs, y_ofs, face_orient) = match quadrant {
-                0 => (
-                    0,
-                    1,
-                    Quat::look_at(&[-1., 0., 0.].into(), &[0., 1., 0.].into()),
-                ),
-                1 => (
-                    1,
-                    1,
-                    Quat::look_at(&[0., 0., -1.].into(), &[0., 1., 0.].into()),
-                ),
-                2 => (
-                    2,
-                    1,
-                    Quat::look_at(&[1., 0., 0.].into(), &[0., 1., 0.].into()),
-                ),
-                3 => (
-                    3,
-                    1,
-                    Quat::look_at(&[0., 0., 1.].into(), &[0., 1., 0.].into()),
-                ),
-                4 => (
-                    1,
-                    0,
-                    Quat::look_at(&[0., 1., 0.].into(), &[0., 0., 1.].into()),
-                ),
-                _ => (
-                    1,
-                    2,
-                    Quat::look_at(&[0., -1., 0.].into(), &[0., 0., -1.].into()),
-                ),
+                0 => (0, 1, Quat::look_at(&[-1., 0., 0.], &[0., 1., 0.])),
+                1 => (1, 1, Quat::look_at(&[0., 0., -1.], &[0., 1., 0.])),
+                2 => (2, 1, Quat::look_at(&[1., 0., 0.], &[0., 1., 0.])),
+                3 => (3, 1, Quat::look_at(&[0., 0., 1.], &[0., 1., 0.])),
+                4 => (1, 0, Quat::look_at(&[0., 1., 0.], &[0., 0., 1.])),
+                _ => (1, 2, Quat::look_at(&[0., -1., 0.], &[0., 0., -1.])),
             };
             image_view.set_window((x_ofs * width, y_ofs * height), width, height);
             image_view.set_orient(face_orient * orient);
