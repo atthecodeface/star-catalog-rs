@@ -414,7 +414,7 @@ This is in degrees, and defaults to 0.
 
         let cos_angle = angle.cos();
         for s in catalog.iter_stars() {
-            if v.dot(&s.vector()) >= cos_angle {
+            if v.dot(s.vector()) >= cos_angle {
                 ids.push(s.id());
             }
         }
