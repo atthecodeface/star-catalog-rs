@@ -31,7 +31,6 @@ optional = true
 
 [dependencies.geo-nd]
 version = "0.6"
-path = "../geo-nd-rs"
 
 [dependencies.serde]
 version = "1.0"
