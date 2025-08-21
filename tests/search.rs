@@ -33,22 +33,25 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
     let mut errs = 0;
     for (a, b, c) in &r {
         let a01 = catalog[*a].cos_angle_between(&catalog[*b]).acos();
-        let a02 = catalog[*b].cos_angle_between(&catalog[*c]).acos();
-        let a12 = catalog[*c].cos_angle_between(&catalog[*a]).acos();
-        let d01 = (a01 - angles_to_find[0]).abs();
-        let d02 = (a02 - angles_to_find[1]).abs();
-        let d12 = (a12 - angles_to_find[2]).abs();
+        let a12 = catalog[*b].cos_angle_between(&catalog[*c]).acos();
+        let a20 = catalog[*c].cos_angle_between(&catalog[*a]).acos();
+        let d12 = (a12 - angles_to_find[0]).abs();
+        let d20 = (a20 - angles_to_find[1]).abs();
+        let d01 = (a01 - angles_to_find[2]).abs();
         eprintln!(
             "{}, {}, {} : {} {} {}",
             catalog[*a].id(),
             catalog[*b].id(),
             catalog[*c].id(),
             d01,
-            d02,
             d12,
+            d20,
         );
-        if d01 > max_angle_delta || d02 > max_angle_delta || d12 > max_angle_delta {
+        if d01 > max_angle_delta || d12 > max_angle_delta || d20 > max_angle_delta {
             errs += 1;
+            eprintln!(" Angle at A: {a12} {}", angles_to_find[0]);
+            eprintln!(" Angle at B: {a20} {}", angles_to_find[1]);
+            eprintln!(" Angle at C: {a01} {}", angles_to_find[2]);
         }
     }
     eprintln!("Count {}", r.len());

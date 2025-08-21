@@ -146,7 +146,7 @@
 //! ```
 //!
 //! Find possible sets of three stars (A, B C) where the three angles
-//! between A and B, B and C, and C and A are given - to within an
+//! between at A, at B, and at C are given - to within an
 //! angular tolerance of delta:
 //!
 //! ```rust,ignore
