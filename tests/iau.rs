@@ -4,7 +4,11 @@ use star_catalog::{iau, Catalog, Subcube};
 
 #[test]
 fn test_iau() -> Result<(), Box<dyn Error>> {
-    let s = std::fs::read_to_string("hipparcos.json")?;
+    let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
+        Ok(s) => (true, s),
+        Err(s) => (false, std::fs::read_to_string("test_catalog.json")?),
+    };
+    // let s = std::fs::read_to_string("hipparcos.json")?;
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     catalog.derive_data();
