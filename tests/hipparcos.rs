@@ -20,7 +20,7 @@ use star_catalog::{hipparcos, Catalog};
 fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
     let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
         Ok(s) => (true, s),
-        Err(s) => (false, std::fs::read_to_string("test_catalog.json")?),
+        Err(s) => (false, std::fs::read_to_string("hipparcos_mag7.json")?),
     };
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();

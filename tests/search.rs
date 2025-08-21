@@ -9,7 +9,7 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
     let magnitude = 5.0;
     let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
         Ok(s) => (true, s),
-        Err(s) => (false, std::fs::read_to_string("test_catalog.json")?),
+        Err(s) => (false, std::fs::read_to_string("hipparcos_mag7.json")?),
     };
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.retain(move |s, _n| s.brighter_than(magnitude));

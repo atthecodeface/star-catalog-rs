@@ -56,11 +56,16 @@ const IMG_4917_DATA: &[(&str, usize, usize)] = &[
 
 #[test]
 fn test_read_hipparcos_json() -> Result<(), Box<dyn Error>> {
-    let s = std::fs::read_to_string("hipparcos.json")?;
+    let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
+        Ok(s) => (true, s),
+        Err(s) => (false, std::fs::read_to_string("hipparcos_mag7.json")?),
+    };
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
-    catalog.add_names(hipparcos::HIP_ALIASES, false)?;
+    if is_hipparcos {
+        catalog.add_names(hipparcos::HIP_ALIASES, false)?;
+    }
     catalog.add_names(EXTRA_ALIASES, false)?;
     Ok(())
 }

@@ -159,7 +159,7 @@
 //!    use star_catalog::{hipparcos, Catalog, CatalogIndex, Subcube};
 //!
 //! # fn main() -> Result<(),Box<dyn std::error::Error>> {
-//!    let s = std::fs::read_to_string("hipparcos.json")?;
+//!    let s = std::fs::read_to_string("hipparcos_mag7.json")?;
 //!    let mut catalog: Catalog = serde_json::from_str(&s)?;
 //!    catalog.sort();
 //!    catalog.add_names(hipparcos::HIP_ALIASES, true)?;
