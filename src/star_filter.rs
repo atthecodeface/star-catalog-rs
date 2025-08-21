@@ -1,31 +1,35 @@
+//a Imports
 use geo_nd::Vector;
-
-use std::rc::Rc;
 
 use crate::{Star, Vec3};
 
 //a StarFilterFn
-pub trait StarFilterFn: Fn(&Star, usize) -> bool + 'static {}
+//tt StarFilterFn
+pub trait StarFilterFn: Fn(&Star, usize) -> bool + 'static + Send {}
 
 //ip StarFilterFn for Fn(&Star, usize) -> bool
-impl<F> StarFilterFn for F where F: for<'a> Fn(&'a Star, usize) -> bool + 'static {}
+impl<F> StarFilterFn for F where F: for<'a> Fn(&'a Star, usize) -> bool + 'static + Send {}
 
+//a StarFilter
 //tp StarFilter
-#[derive(Clone)]
-pub struct StarFilter(Rc<dyn StarFilterFn>);
+pub struct StarFilter(Box<dyn StarFilterFn>);
+
+//fi accept_all
+pub fn accept_all(_s: &Star, _n: usize) -> bool {
+    true
+}
 
 //ip Default for StarFilter
 impl std::default::Default for StarFilter {
     fn default() -> Self {
-        let f = Rc::new(|_s: &Star, _n: usize| true);
-        StarFilter(f)
+        StarFilter(Box::new(accept_all))
     }
 }
 
 //ip From<StarFilterFn> for StarFilter
 impl<F: StarFilterFn + 'static> From<F> for StarFilter {
     fn from(f: F) -> Self {
-        let f = Rc::new(f);
+        let f = Box::new(f);
         Self(f)
     }
 }
@@ -41,10 +45,9 @@ impl StarFilter {
     //cp then
     /// Create a new filter that calls the current filter, an if
     /// *true* calls a follow-on filter
-    pub fn then(mut self, f: StarFilter) -> Self {
-        let f_first = self.0.clone();
-        // self.0 = Rc::new(move |s, n| f_first(s, n) && f.call(s, n));
-        self.0 = Rc::new(move |s, n| if f_first(s, n) { f.call(s, n) } else { false });
+    pub fn then(&mut self, f: StarFilter) -> &mut Self {
+        let f_first = std::mem::replace(&mut self.0, Box::new(accept_all));
+        self.0 = Box::new(move |s, n| if f_first(s, n) { f.call(s, n) } else { false });
         self
     }
 
@@ -54,13 +57,13 @@ impl StarFilter {
     /// This can be used to capture a subset of star results, for example
     pub fn select(skip: usize, limit: usize) -> Self {
         let select = StarFilterSelect::new(skip, limit);
-        Self(Rc::new(move |_s_, _n| select.filter()))
+        Self(Box::new(move |_s_, _n| select.filter()))
     }
 
     //cp brighter_than
     /// Create a new filter that returns true for stars brighter than a certain magnitude
     pub fn brighter_than(magnitude: f32) -> Self {
-        let f = Rc::new(move |s: &Star, _n: usize| s.mag < magnitude);
+        let f = Box::new(move |s: &Star, _n: usize| s.mag < magnitude);
         Self(f)
     }
 
@@ -70,7 +73,7 @@ impl StarFilter {
     /// (this being given by its cosine)
     pub fn cos_to_gt(v: [f64; 3], cos: f64) -> Self {
         let v: Vec3 = v.into();
-        let f = Rc::new(move |s: &Star, _n: usize| v.dot(&s.vector) > cos);
+        let f = Box::new(move |s: &Star, _n: usize| v.dot(&s.vector) > cos);
         Self(f)
     }
 }

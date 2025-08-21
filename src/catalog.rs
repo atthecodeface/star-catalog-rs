@@ -258,10 +258,8 @@ impl Catalog {
     }
 
     //mp add_filter
-    pub fn add_filter(&mut self, f: StarFilter) -> StarFilter {
-        let f_orig = self.filter.clone();
-        self.filter = f_orig.clone().then(f);
-        f_orig
+    pub fn add_filter(&mut self, f: StarFilter) {
+        self.filter.then(f);
     }
 }
 

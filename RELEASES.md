@@ -1,3 +1,15 @@
+# Release 0.2.0 (2025-08-12)
+
+- Made StarFilterFn be Send to permit the Catalog to be used in a
+  Mutex with multiple threads; this means filter functions are no
+  longer held in an Rc, but in a Box, and so no longer clone.
+
+# Release 0.1.0 (2025-08-12)
+
+- Updated to latest geo-nd, changing the API to use arrays rather than vectors
+
+- Tidied considerably
+
 # Release 0.0.8 in progress (2024-08-26)
 
 - Added StarFilter, and StarFilterSelect, to provide simple filtering

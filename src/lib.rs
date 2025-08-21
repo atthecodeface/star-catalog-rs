@@ -70,7 +70,7 @@
 //! angles in radians.
 //!
 //! For photographic images using standard lenses the field of view
-//! will be, at smmallest, in the order of 1 degrees. With modern
+//! will be, at smallest, in the order of a single degree. With modern
 //! cameras at 10,000 pixels across a sensor frame a single pixel is
 //! about 0.3 arcseconds; storing angles in f32 in radians just about
 //! suffices for this.
@@ -145,7 +145,9 @@
 //!   assert_eq!(catalog[polaris_by_ra_de].id(), 111767);
 //! ```
 //!
-//! Find possible sets of three stars (A, B C) where the three angles between A and B, A and C, and B and C are given - to within an angular tolerance of delta:
+//! Find possible sets of three stars (A, B C) where the three angles
+//! between A and B, B and C, and C and A are given - to within an
+//! angular tolerance of delta:
 //!
 //! ```rust,ignore
 //!   let candidate_tris = catalog.find_star_triangles(catalog.iter_all(), &[0.1, 0.15, 0.05], 0.003);
