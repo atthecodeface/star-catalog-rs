@@ -7,15 +7,17 @@ use star_catalog::{hipparcos, Catalog};
 fn test_find_stars() -> Result<(), Box<dyn Error>> {
     // Probably we should be testing with mag 5; we can test with 7 though
     let magnitude = 5.0;
-    let Ok(s) = std::fs::read_to_string("hipparcos.json") else {
-        eprintln!("Skipping find_stars test as hipparcos.json is not found");
-        return Ok(());
+    let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
+        Ok(s) => (true, s),
+        Err(s) => (false, std::fs::read_to_string("test_catalog.json")?),
     };
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.retain(move |s, _n| s.brighter_than(magnitude));
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
-    catalog.add_names(hipparcos::HIP_ALIASES, true)?;
+    if is_hipparcos {
+        catalog.add_names(hipparcos::HIP_ALIASES, true)?;
+    }
     catalog.derive_data();
 
     // Dubhe, Polaris, Megrez (54061, 11767, 59774)
