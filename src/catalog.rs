@@ -472,6 +472,40 @@ impl Catalog {
     ///
     /// Needs data to have been derived for the Catalog
     #[track_caller]
+    pub fn find_star_triangles_max<I>(
+        &self,
+        subcube_iter: I,
+        angles_to_find: &[f64; 3],
+        max_angle_delta: f64,
+        max_candidates: usize,
+    ) -> Result<
+        Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>,
+        Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>,
+    >
+    where
+        I: Iterator<Item = Subcube>,
+    {
+        let mut result = vec![];
+        let completed_search = self.map_star_triangles(
+            subcube_iter,
+            angles_to_find,
+            max_angle_delta,
+            |abc| {
+                result.push(abc);
+            },
+            max_candidates,
+        );
+        if completed_search {
+            Ok(result)
+        } else {
+            Err(result)
+        }
+    }
+
+    /// Find a triangle of stars given the visual angles between them
+    ///
+    /// Needs data to have been derived for the Catalog
+    #[track_caller]
     pub fn find_star_triangles<I>(
         &self,
         subcube_iter: I,
@@ -481,16 +515,30 @@ impl Catalog {
     where
         I: Iterator<Item = Subcube>,
     {
+        let max_candidates = usize::MAX;
         let mut result = vec![];
-        self.map_star_triangles(subcube_iter, angles_to_find, max_angle_delta, |abc| {
-            result.push(abc);
-        });
+        self.map_star_triangles(
+            subcube_iter,
+            angles_to_find,
+            max_angle_delta,
+            |abc| {
+                result.push(abc);
+            },
+            max_candidates,
+        );
         result
     }
 
     /// Call a function for every triangle of stars given the visual angles between them
     ///
     /// Needs data to have been derived for the Catalog
+    ///
+    /// This takes three angles - the angles between each pair of three triangles
+    ///
+    /// For each pair it generates an angle range that it will look for
+    /// candidate star pairs; it turns this into a range of cosines for each
+    /// pair. Hence each pair has a minimum cosine and a maximum cosine for the
+    /// angle between two candidate stars.
     #[track_caller]
     pub fn map_star_triangles<I, F>(
         &self,
@@ -498,7 +546,9 @@ impl Catalog {
         angles_to_find: &[f64; 3],
         max_angle_delta: f64,
         mut map: F,
-    ) where
+        max_candidates: usize,
+    ) -> bool
+    where
         I: Iterator<Item = Subcube>,
         F: FnMut((CatalogIndex, CatalogIndex, CatalogIndex)) -> (),
     {
@@ -551,6 +601,7 @@ impl Catalog {
         let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
 
         // Run through all the supplied subcubes
+        let mut number_candidates_tried = 0;
         let mut number_found = 0;
         let mut subcubes_to_search = vec![];
 
@@ -588,6 +639,7 @@ impl Catalog {
                 subcubes_to_search.push(s12)
             }
 
+            // For all the stars (by CatalogIndex) in the subcube of interest...
             for i0 in self[sub0].iter() {
                 let s0 = &self[*i0];
                 if !self.filter.call(s0, number_found) {
@@ -601,6 +653,10 @@ impl Catalog {
                         c > subcube_cos_angle_ranges[0].0 && c < subcube_cos_angle_ranges[0].1
                     })
                     .copied();
+
+                // For all the other stars (by CatalogIndex) in the subcubes around s0
+                //
+                // Ditch them if they have cos(angle) to the first star outside of the cos range permitted
                 for sub1 in subcubes_for_s0 {
                     for i1 in self[sub1].iter() {
                         if *i0 == *i1 {
@@ -630,11 +686,21 @@ impl Catalog {
                                     && c < subcube_cos_angle_ranges[1].1
                             })
                             .copied();
+
+                        // For all the other stars (by CatalogIndex) in the subcubes around s0
+                        //
+                        // Ditch them if they have cos(angle) to the first star outside of the cos range permitted, or the angle to the second star is ditto
                         for sub2 in subcubes_for_s1 {
                             for i2 in self[sub2].iter() {
                                 if *i0 == *i2 || *i1 == *i2 {
                                     continue;
                                 }
+
+                                number_candidates_tried += 1;
+                                if number_candidates_tried >= max_candidates {
+                                    return false;
+                                }
+
                                 let s2 = &self[*i2];
                                 if !self.filter.call(s2, number_found) {
                                     continue;
@@ -663,6 +729,7 @@ impl Catalog {
                 }
             }
         }
+        true
     }
 }
 
