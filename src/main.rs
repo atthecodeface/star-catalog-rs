@@ -1,3 +1,4 @@
+//a Imports
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -12,6 +13,8 @@ use geo_nd::Quaternion;
 #[cfg(feature = "image")]
 use star_catalog::{ImageView, Quat};
 
+//a Useful functions
+//fi find_id_or_name
 fn find_id_or_name(
     catalog: &Catalog,
     s: Option<&str>,
@@ -22,6 +25,8 @@ fn find_id_or_name(
     Ok(Some(catalog.find_id_or_name(s)?))
 }
 
+//a main
+//fp main
 fn main() -> Result<(), anyhow::Error> {
     let cmd = Command::new("star_catalog")
         .about("Star catlog")

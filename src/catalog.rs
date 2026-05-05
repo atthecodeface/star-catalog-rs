@@ -649,7 +649,7 @@ impl Catalog {
 //ip Catalog - Iterators
 impl Catalog {
     //mp iter_stars
-    pub fn iter_stars(&self) -> StarIter {
+    pub fn iter_stars(&self) -> StarIter<'_> {
         StarIter {
             catalog: self,
             i: 0,
@@ -659,7 +659,7 @@ impl Catalog {
     //mp iter_within_subcubes
     /// Iterate over all the stars in the catalog within a set of
     /// subcubes provide by an iterator
-    pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<I>
+    pub fn iter_within_subcubes<I>(&self, subcube_iter: I) -> StarSubcubeIter<'_, I>
     where
         I: std::iter::Iterator<Item = Subcube>,
     {
