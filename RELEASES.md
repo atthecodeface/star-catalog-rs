@@ -1,3 +1,7 @@
+# Release 0.2.1 (2026-05-05)
+
+- Moved to Rust edition 2024; maintenance
+
 # Release 0.2.0 (2025-08-12)
 
 - Made StarFilterFn be Send to permit the Catalog to be used in a
