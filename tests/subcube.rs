@@ -6,7 +6,7 @@ use star_catalog::{Subcube, Vec3};
 
 #[test]
 fn test_on_sphere() -> Result<(), Box<dyn Error>> {
-    let s: Subcube = Subcube::of_vector(&[0.01, 0.01, 0.01].into());
+    let s: Subcube = Subcube::of_vector(&[0.01, 0.01, 0.01]);
     for sn in s.iter_range(1) {
         assert!(
             !sn.may_be_on_sphere(),

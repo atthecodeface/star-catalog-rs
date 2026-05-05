@@ -12,7 +12,7 @@ use star_catalog::{Quat, Vec3};
 type Vec2 = geo_nd::FArray<f64, 2>;
 
 #[cfg(test)]
-const EXTRA_ALIASES: &[(usize, &'static str)] = &[
+const EXTRA_ALIASES: &[(usize, &str)] = &[
     (61281, "Kappa Draconis"),
     (56211, "Lambda Draconis"),
     (58001, "Phecda"),

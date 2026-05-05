@@ -26,8 +26,8 @@ fn test_find_stars() -> Result<(), Box<dyn Error>> {
     // let angles_to_find = [25.71, 10.22, 15.71];
     // Mizar, Megrez, Alkaid
     // let angles_to_find = [9.782, 6.676, 15.71];
-    for i in 0..3 {
-        angles_to_find[i] = angles_to_find[i] / 180.0 * std::f64::consts::PI;
+    for a in &mut angles_to_find {
+        *a = *a / 180.0 * std::f64::consts::PI;
     }
 
     // let max_angle_delta = 0.15 / 180.0 * std::f64::consts::PI;

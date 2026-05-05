@@ -27,8 +27,8 @@ fn test_iau() -> Result<(), Box<dyn Error>> {
                 continue;
             }
         }
-        let ra = (*ra as f64) / 180.0 * std::f64::consts::PI;
-        let de = (*de as f64) / 180.0 * std::f64::consts::PI;
+        let ra = *ra / 180.0 * std::f64::consts::PI;
+        let de = *de / 180.0 * std::f64::consts::PI;
         let subcube_iter = Subcube::iter_all();
         let (c, star) = catalog.closest_to_ra_de(subcube_iter, ra, de).unwrap();
         let found_id = catalog[star].id();
@@ -42,7 +42,7 @@ fn test_iau() -> Result<(), Box<dyn Error>> {
                 "Angle between found star {found_id} and IAU star {name} too big"
             );
         } else {
-            assert!( !(c > 0.999999),
+            assert!( c <= 0.999999,
 "IAU named star {name} has no HIP ID but Hipparcos catalog entry found to be {found_id} witth cos {c}");
         }
     }
