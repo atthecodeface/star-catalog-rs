@@ -12,9 +12,9 @@ fn test_iau() -> Result<(), Box<dyn Error>> {
         81022, 56572, 106824, 55664, 79431, 95262, 104780, 43674, 110458, 38041, 17096, 57291,
         96078, 87937, 80838, 70890,
     ];
-    let (is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
+    let (_is_hipparcos, s) = match std::fs::read_to_string("hipparcos.json") {
         Ok(s) => (true, s),
-        Err(s) => (false, std::fs::read_to_string("hipparcos_mag7.json")?),
+        Err(_s) => (false, std::fs::read_to_string("hipparcos_mag7.json")?),
     };
     // let s = std::fs::read_to_string("hipparcos.json")?;
     let mut catalog: Catalog = serde_json::from_str(&s)?;
