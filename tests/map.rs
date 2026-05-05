@@ -199,7 +199,10 @@ fn test_quats() -> Result<(), Box<dyn Error>> {
     // let comp = "HD105043";
     let comp = "Kappa Draconis";
 
-    let s = std::fs::read_to_string("hipparcos.json")?;
+    let Ok(s) = std::fs::read_to_string("hipparcos.json") else {
+        eprintln!("Failed to find 'hipparcos.json'; skipping test_quats test");
+        return Ok(());
+    };
     let mut catalog: Catalog = serde_json::from_str(&s)?;
     catalog.sort();
     eprintln!("Loaded {} stars", catalog.len());
