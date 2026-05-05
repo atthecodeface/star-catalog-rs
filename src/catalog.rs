@@ -468,7 +468,6 @@ impl Catalog {
         result
     }
 
-    //mp find_star_triangles
     /// Find a triangle of stars given the visual angles between them
     ///
     /// Needs data to have been derived for the Catalog
@@ -481,6 +480,27 @@ impl Catalog {
     ) -> Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>
     where
         I: Iterator<Item = Subcube>,
+    {
+        let mut result = vec![];
+        self.map_star_triangles(subcube_iter, angles_to_find, max_angle_delta, |abc| {
+            result.push(abc);
+        });
+        result
+    }
+
+    /// Call a function for every triangle of stars given the visual angles between them
+    ///
+    /// Needs data to have been derived for the Catalog
+    #[track_caller]
+    pub fn map_star_triangles<I, F>(
+        &self,
+        subcube_iter: I,
+        angles_to_find: &[f64; 3],
+        max_angle_delta: f64,
+        mut map: F,
+    ) where
+        I: Iterator<Item = Subcube>,
+        F: FnMut((CatalogIndex, CatalogIndex, CatalogIndex)) -> (),
     {
         assert!(
             self.has_derived_data(),
@@ -531,7 +551,7 @@ impl Catalog {
         let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
 
         // Run through all the supplied subcubes
-        let mut result = vec![];
+        let mut number_found = 0;
         let mut subcubes_to_search = vec![];
 
         for sub0 in subcube_iter {
@@ -570,7 +590,7 @@ impl Catalog {
 
             for i0 in self[sub0].iter() {
                 let s0 = &self[*i0];
-                if !self.filter.call(s0, result.len()) {
+                if !self.filter.call(s0, number_found) {
                     continue;
                 }
                 // iterate through subcubes_to_search, skipping those that are nowhere near angles_to_find[0] away
@@ -587,7 +607,7 @@ impl Catalog {
                             continue;
                         }
                         let s1 = &self[*i1];
-                        if !self.filter.call(s1, result.len()) {
+                        if !self.filter.call(s1, number_found) {
                             continue;
                         }
 
@@ -616,7 +636,7 @@ impl Catalog {
                                     continue;
                                 }
                                 let s2 = &self[*i2];
-                                if !self.filter.call(s2, result.len()) {
+                                if !self.filter.call(s2, number_found) {
                                     continue;
                                 }
                                 let c_s02 = s0.cos_angle_between(s2);
@@ -635,14 +655,14 @@ impl Catalog {
                                 // Hence i0 is C; i1 is B, i2 is A
                                 //
                                 // For the angles opposite AB/CB/AC we need C,A,B which is i2, i1, i0
-                                result.push((*i2, *i1, *i0));
+                                number_found += 1;
+                                map((*i2, *i1, *i0));
                             }
                         }
                     }
                 }
             }
         }
-        result
     }
 }
 
