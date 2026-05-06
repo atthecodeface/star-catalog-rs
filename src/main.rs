@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use clap::{ArgMatches, Command};
 use geo_nd::Vector;
-use star_catalog::{cmdline, Catalog, CatalogIndex, Star, Subcube};
+use star_catalog::{
+    Catalog, CatalogIndex, Star, StarTriangleMatch, StarTriangleSearch, Subcube, cmdline,
+};
 
 type Vec3 = geo_nd::FArray<f64, 3>;
 
@@ -544,20 +546,30 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
     let max_angle_delta = cmdline::angle(matches, 0.1);
 
     let subcube_iter = Subcube::iter_all();
-    let r = catalog.find_star_triangles(subcube_iter, &angles_to_find, max_angle_delta);
-    for (a, b, c) in &r {
-        let a01 = catalog[*a].cos_angle_between(&catalog[*b]).acos() * 180.0 / std::f64::consts::PI;
-        let a02 = catalog[*a].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
-        let a12 = catalog[*b].cos_angle_between(&catalog[*c]).acos() * 180.0 / std::f64::consts::PI;
+    let search = StarTriangleSearch::of_angles(angles_to_find, max_angle_delta).unwrap();
+    let (finished, mut r) = catalog.find_star_triangles(subcube_iter, &search, 1000);
+    r.sort_by(StarTriangleMatch::compare_angle_sum);
+    for tm in &r {
+        let t = tm.triangle();
+        let a01 =
+            catalog[t.0].cos_angle_between(&catalog[t.1]).acos() * 180.0 / std::f64::consts::PI;
+        let a02 =
+            catalog[t.0].cos_angle_between(&catalog[t.2]).acos() * 180.0 / std::f64::consts::PI;
+        let a12 =
+            catalog[t.1].cos_angle_between(&catalog[t.2]).acos() * 180.0 / std::f64::consts::PI;
         println!(
-            "{}, {}, {} : {} {} {}",
-            catalog[*a].id(),
-            catalog[*b].id(),
-            catalog[*c].id(),
+            "{}, {}, {} : {} {} {} : {}",
+            catalog[t.0].id(),
+            catalog[t.1].id(),
+            catalog[t.2].id(),
             a01,
             a02,
             a12,
+            tm.angle_sum() * 180.0 / std::f64::consts::PI
         );
+    }
+    if !finished {
+        print!("More than 1000 candidates were found - try a smaller max angle delta");
     }
     Ok(())
 }

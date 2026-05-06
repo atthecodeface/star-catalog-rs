@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 // hipparcos is used only with some features
 #[allow(unused_imports)]
 use crate::hipparcos;
-use crate::{Error, Star, StarFilter, StarFilterFn, Subcube, Vec3};
+use crate::{
+    Error, Star, StarFilter, StarFilterFn, StarTriangle, StarTriangleMatch, StarTriangleSearch,
+    Subcube, Vec3,
+};
 
 //a CatalogIndex
 //tp CatalogIndex
@@ -66,7 +69,9 @@ pub struct Catalog {
     /// Filter to apply to finding stars
     #[serde(skip)]
     filter: StarFilter,
-    /// Star indices within each subcube
+    /// Star indices within each subcube; filled out by derive_data
+    ///
+    /// Subcubes are numbered 0 to Subcube::NUM_SUBCUBES-1
     #[serde(skip)]
     subcubes: Vec<Vec<CatalogIndex>>,
 }
@@ -472,61 +477,25 @@ impl Catalog {
     ///
     /// Needs data to have been derived for the Catalog
     #[track_caller]
-    pub fn find_star_triangles_max<I>(
+    pub fn find_star_triangles<I>(
         &self,
         subcube_iter: I,
-        angles_to_find: &[f64; 3],
-        max_angle_delta: f64,
+        search: &StarTriangleSearch,
         max_candidates: usize,
-    ) -> Result<
-        Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>,
-        Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>,
-    >
+    ) -> (bool, Vec<StarTriangleMatch>)
     where
         I: Iterator<Item = Subcube>,
     {
         let mut result = vec![];
         let completed_search = self.map_star_triangles(
             subcube_iter,
-            angles_to_find,
-            max_angle_delta,
-            |abc| {
-                result.push(abc);
+            search,
+            |abc: StarTriangle| {
+                result.push(search.triangle_match(self, abc));
             },
             max_candidates,
         );
-        if completed_search {
-            Ok(result)
-        } else {
-            Err(result)
-        }
-    }
-
-    /// Find a triangle of stars given the visual angles between them
-    ///
-    /// Needs data to have been derived for the Catalog
-    #[track_caller]
-    pub fn find_star_triangles<I>(
-        &self,
-        subcube_iter: I,
-        angles_to_find: &[f64; 3],
-        max_angle_delta: f64,
-    ) -> Vec<(CatalogIndex, CatalogIndex, CatalogIndex)>
-    where
-        I: Iterator<Item = Subcube>,
-    {
-        let max_candidates = usize::MAX;
-        let mut result = vec![];
-        self.map_star_triangles(
-            subcube_iter,
-            angles_to_find,
-            max_angle_delta,
-            |abc| {
-                result.push(abc);
-            },
-            max_candidates,
-        );
-        result
+        (completed_search, result)
     }
 
     /// Call a function for every triangle of stars given the visual angles between them
@@ -543,41 +512,29 @@ impl Catalog {
     pub fn map_star_triangles<I, F>(
         &self,
         subcube_iter: I,
-        angles_to_find: &[f64; 3],
-        max_angle_delta: f64,
+        search: &StarTriangleSearch,
         mut map: F,
         max_candidates: usize,
     ) -> bool
     where
         I: Iterator<Item = Subcube>,
-        F: FnMut((CatalogIndex, CatalogIndex, CatalogIndex)) -> (),
+        F: FnMut(StarTriangle) -> (),
     {
         assert!(
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
 
-        // Find the range of cosines for the angles that we will accept
-        //
-        // Note cos(0) > cos(0.1) so min cos is cos(angle + max)
-        let cos_angle_ranges: Vec<(f64, f64)> = angles_to_find
-            .iter()
-            .map(|a| {
-                (
-                    (*a + max_angle_delta).cos(),
-                    (*a - max_angle_delta).max(0.).cos(),
-                )
-            })
-            .collect();
-
         // Find the range of subcube centre angles that are allowed for each of the triangle angles
         let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
-        let subcube_angle_ranges: Vec<(f64, f64)> = angles_to_find
+        let subcube_angle_ranges: Vec<(f64, f64)> = search
+            .angles_to_find
             .iter()
             .map(|a| {
                 (
-                    (*a - max_angle_delta - subcube_max_angle).max(0.),
-                    (*a + max_angle_delta + subcube_max_angle).min(std::f64::consts::PI / 2.),
+                    (*a - search.max_angle_delta - subcube_max_angle).max(0.),
+                    (*a + search.max_angle_delta + subcube_max_angle)
+                        .min(std::f64::consts::PI / 2.),
                 )
             })
             .collect();
@@ -597,7 +554,10 @@ impl Catalog {
         // let range = Subcube::ELE_PER_SIDE / 2;
         // For max 15.71 degrees (mag 5.0)  needs range = 3
         // let range = Subcube::ELE_PER_SIDE / 2;
-        let max_angle = angles_to_find.iter().fold(0.0, |acc: f64, b| acc.max(*b));
+        let max_angle = search
+            .angles_to_find
+            .iter()
+            .fold(0.0, |acc: f64, b| acc.max(*b));
         let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
 
         // Run through all the supplied subcubes
@@ -668,7 +628,9 @@ impl Catalog {
                         }
 
                         let c_s01 = s0.cos_angle_between(s1);
-                        if c_s01 < cos_angle_ranges[0].0 || c_s01 > cos_angle_ranges[0].1 {
+                        if c_s01 < search.cos_max_angles_to_find[0]
+                            || c_s01 > search.cos_min_angles_to_find[0]
+                        {
                             continue;
                         }
 
@@ -706,11 +668,15 @@ impl Catalog {
                                     continue;
                                 }
                                 let c_s02 = s0.cos_angle_between(s2);
-                                if c_s02 < cos_angle_ranges[1].0 || c_s02 > cos_angle_ranges[1].1 {
+                                if c_s02 < search.cos_max_angles_to_find[1]
+                                    || c_s02 > search.cos_min_angles_to_find[1]
+                                {
                                     continue;
                                 }
                                 let c_s12 = s1.cos_angle_between(s2);
-                                if c_s12 < cos_angle_ranges[2].0 || c_s12 > cos_angle_ranges[2].1 {
+                                if c_s12 < search.cos_max_angles_to_find[2]
+                                    || c_s12 > search.cos_min_angles_to_find[2]
+                                {
                                     continue;
                                 }
                                 // angles [0], [1] and [2] are the angles at the points A, B and C
@@ -722,7 +688,7 @@ impl Catalog {
                                 //
                                 // For the angles opposite AB/CB/AC we need C,A,B which is i2, i1, i0
                                 number_found += 1;
-                                map((*i2, *i1, *i0));
+                                map((*i2, *i1, *i0).into());
                             }
                         }
                     }
@@ -730,6 +696,34 @@ impl Catalog {
             }
         }
         true
+    }
+
+    /// Call a function for every triangle of stars given the visual angles between them
+    ///
+    /// Needs data to have been derived for the Catalog
+    ///
+    #[track_caller]
+    pub fn find_best_star_mappings<I>(
+        &self,
+        subcube_iter: I,
+        img_space_vectors: &[[f64; 3]],
+        max_angle_delta: f64,
+        max_candidates: usize,
+    ) -> (bool, Vec<StarTriangleMatch>)
+    where
+        I: Iterator<Item = Subcube>,
+    {
+        assert!(
+            self.has_derived_data(),
+            "Attempt to find a star in the Catalog that has not has its data derived"
+        );
+
+        let Some(search) = StarTriangleSearch::of_vectors(img_space_vectors, max_angle_delta)
+        else {
+            return (true, vec![]);
+        };
+
+        self.find_star_triangles(subcube_iter, &search, max_candidates)
     }
 }
 

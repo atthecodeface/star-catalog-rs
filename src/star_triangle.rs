@@ -1,0 +1,148 @@
+use crate::{Catalog, CatalogIndex, Quat, Vec3};
+use geo_nd::{Quaternion, Vector, vector};
+
+#[derive(Debug, Clone, Copy)]
+pub struct StarTriangle(pub CatalogIndex, pub CatalogIndex, pub CatalogIndex);
+
+pub struct StarTriangleSearch {
+    /// Vectors in 'image' space of three stars to search for
+    pub(crate) img_vectors: [Vec3; 3],
+    /// Maximum angle delta between the expected angle between two vectors and that of the pair of stars they map to
+    pub(crate) max_angle_delta: f64,
+    /// Angles to find (the angles between the image vectors)
+    pub(crate) angles_to_find: [f64; 3],
+    /// Cosine of min angles (angle to find - max angle delta); note these values are *larger* than cos_max_angles
+    pub(crate) cos_min_angles_to_find: [f64; 3],
+    /// Cosine of the max angles (angle to find + max angle delta)
+    pub(crate) cos_max_angles_to_find: [f64; 3],
+}
+
+pub struct StarTriangleMatch {
+    triangle: StarTriangle,
+    q: Quat,
+    angle_sum: f64,
+}
+
+impl StarTriangleMatch {
+    pub fn triangle(&self) -> StarTriangle {
+        self.triangle
+    }
+    pub fn quaternion(&self) -> Quat {
+        self.q
+    }
+    pub fn angle_sum(&self) -> f64 {
+        self.angle_sum
+    }
+    pub fn compare_angle_sum(&self, other: &Self) -> std::cmp::Ordering {
+        self.angle_sum
+            .partial_cmp(&other.angle_sum)
+            .unwrap_or(std::cmp::Ordering::Less)
+    }
+}
+
+impl std::convert::From<(CatalogIndex, CatalogIndex, CatalogIndex)> for StarTriangle {
+    fn from(value: (CatalogIndex, CatalogIndex, CatalogIndex)) -> Self {
+        Self(value.0, value.1, value.2)
+    }
+}
+
+impl StarTriangleSearch {
+    pub fn of_angles(angles_to_find: [f64; 3], max_angle_delta: f64) -> Option<Self> {
+        let sa = [
+            angles_to_find[0].sin(),
+            angles_to_find[1].sin(),
+            angles_to_find[2].sin(),
+        ];
+        let ca = [
+            angles_to_find[0].cos(),
+            angles_to_find[1].cos(),
+            angles_to_find[2].cos(),
+        ];
+
+        if sa[0] == 0. || sa[1] == 0. || sa[2] == 0. {
+            return None;
+        }
+
+        let v0 = [1., 0., 0.];
+        // Place v1 such that angle (at centre) between v0 and v1 is Theta01
+        let v1 = [ca[0], sa[0], 0.];
+        // Place v2_init such that angle (at centre) between v2 and v0 is Theta20
+        // v2_init = [ca[2], -sa[2], 0]
+        // Rotate v2_init around axis v0 (into v2) until angle between v1 and v2 is Theta12; call this rotation by Phi
+        //
+        // v2 = [ v2_init[0], v2_init[1]*cos(phi), v2_init[1]*sin(phi) ]
+        //    = [ cos(Theta20), -sin(Theta20)*cos(phi), -sin(Theta20)*sin(phi) ]
+        //
+        // cos(Theta12) = v1.v2 = cos(Theta01)*cos(Theta20) - sin(Theta01)*sin(Theta20)*cos(phi) - 0.sin(Theta20)*sin(phi);
+        // sin(Theta01)*sin(Theta20)*cos(phi) = cos(Theta01)*cos(Theta20) - cos(Theta12);
+        // cos(phi) = (cos(Theta01)*cos(Theta20) - cos(Theta12)) / sin(Theta01)*sin(Theta20);
+        let cos_phi = (ca[0] * ca[2] - ca[1]) / (sa[0] * sa[2]);
+        if cos_phi < -1.0 || cos_phi > 1.0 {
+            return None;
+        }
+        // sin_phi = +- sqrt(1-cos^2(phi)) !!
+        let sin_phi = (1.0 - cos_phi * cos_phi).sqrt();
+        let v2 = [ca[2], -sa[2] * cos_phi, -sa[2] * sin_phi];
+        Self::of_vectors(&[v0, v1, v2], max_angle_delta)
+    }
+
+    pub fn of_vectors(img_space_vectors: &[[f64; 3]], max_angle_delta: f64) -> Option<Self> {
+        if img_space_vectors.len() < 3 {
+            return None;
+        }
+        let isv0: Vec3 = vector::normalize(img_space_vectors[0]).into();
+        let isv1: Vec3 = vector::normalize(img_space_vectors[1]).into();
+        let isv2: Vec3 = vector::normalize(img_space_vectors[2]).into();
+        let angles_to_find = [
+            isv0.dot(&isv1).acos(),
+            isv1.dot(&isv2).acos(),
+            isv2.dot(&isv0).acos(),
+        ];
+        let cos_min_angles_to_find = [
+            (angles_to_find[0] - max_angle_delta).max(0.).cos(),
+            (angles_to_find[1] - max_angle_delta).max(0.).cos(),
+            (angles_to_find[2] - max_angle_delta).max(0.).cos(),
+        ];
+        let cos_max_angles_to_find = [
+            (angles_to_find[0] + max_angle_delta).cos(),
+            (angles_to_find[1] + max_angle_delta).cos(),
+            (angles_to_find[2] + max_angle_delta).cos(),
+        ];
+
+        Some(Self {
+            img_vectors: [isv0, isv1, isv2],
+            max_angle_delta,
+            angles_to_find,
+            cos_min_angles_to_find,
+            cos_max_angles_to_find,
+        })
+    }
+    pub fn triangle_match(&self, catalog: &Catalog, triangle: StarTriangle) -> StarTriangleMatch {
+        let s0 = &catalog[triangle.0];
+        let s1 = &catalog[triangle.1];
+        let s2 = &catalog[triangle.2];
+
+        let q01 = Quat::mapping_vector_pair_to_vector_pair(
+            (&self.img_vectors[0], &self.img_vectors[1]),
+            (&s0.vector, &s1.vector),
+        );
+        let q12 = Quat::mapping_vector_pair_to_vector_pair(
+            (&self.img_vectors[1], &self.img_vectors[2]),
+            (&s1.vector, &s2.vector),
+        );
+        let q20 = Quat::mapping_vector_pair_to_vector_pair(
+            (&self.img_vectors[2], &self.img_vectors[0]),
+            (&s2.vector, &s0.vector),
+        );
+        let q012 = q01.weighted_average_pair(1.0, &q12, 1.0);
+        let q = q012.weighted_average_pair(2.0, &q20, 1.0);
+        let a0 = vector::dot(&q.apply3_arr(&self.img_vectors[0]), &s0.vector).acos();
+        let a1 = vector::dot(&q.apply3_arr(&self.img_vectors[1]), &s1.vector).acos();
+        let a2 = vector::dot(&q.apply3_arr(&self.img_vectors[2]), &s2.vector).acos();
+        StarTriangleMatch {
+            triangle,
+            q,
+            angle_sum: a0 + a1 + a2,
+        }
+    }
+}

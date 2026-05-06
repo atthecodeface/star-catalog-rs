@@ -218,6 +218,7 @@ mod catalog;
 mod error;
 mod star;
 mod star_filter;
+mod star_triangle;
 mod subcube;
 
 pub mod cmdline;
@@ -227,6 +228,8 @@ pub mod iau;
 
 #[cfg(feature = "image")]
 mod image;
+
+pub use star_triangle::{StarTriangle, StarTriangleMatch, StarTriangleSearch};
 
 pub use catalog::{Catalog, CatalogIndex};
 pub use error::Error;
