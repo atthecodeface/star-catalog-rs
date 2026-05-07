@@ -214,6 +214,8 @@ pub type Vec4 = geo_nd::FArray<f64, 4>;
 /// this includes the direction and 'up' for a camera, for example
 pub type Quat = geo_nd::QArray<f64>;
 
+pub use geo_nd;
+
 mod catalog;
 mod error;
 mod star;
@@ -229,7 +231,9 @@ pub mod iau;
 #[cfg(feature = "image")]
 mod image;
 
-pub use star_triangle::{StarTriangle, StarTriangleMatch, StarTriangleSearch};
+pub use star_triangle::{
+    StarMatchMapping, StarMatchMappingSet, StarTriangle, StarTriangleMatch, StarTriangleSearch,
+};
 
 pub use catalog::{Catalog, CatalogIndex};
 pub use error::Error;

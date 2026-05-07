@@ -2,15 +2,16 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use geo_nd::Vector;
+use geo_nd::{Quaternion, Vector};
 use serde::{Deserialize, Serialize};
+use serde_json::map;
 
 // hipparcos is used only with some features
 #[allow(unused_imports)]
 use crate::hipparcos;
 use crate::{
-    Error, Star, StarFilter, StarFilterFn, StarTriangle, StarTriangleMatch, StarTriangleSearch,
-    Subcube, Vec3,
+    Error, Star, StarFilter, StarFilterFn, StarMatchMapping, StarMatchMappingSet, StarTriangle,
+    StarTriangleMatch, StarTriangleSearch, Subcube, Vec3,
 };
 
 //a CatalogIndex
@@ -491,7 +492,10 @@ impl Catalog {
             subcube_iter,
             search,
             |abc: StarTriangle| {
-                result.push(search.triangle_match(self, abc));
+                let tm = search.triangle_match(self, abc);
+                if tm.angle_sum() < 3.0 * search.max_angle_delta {
+                    result.push(tm);
+                }
             },
             max_candidates,
         );
@@ -709,9 +713,9 @@ impl Catalog {
         img_space_vectors: &[[f64; 3]],
         max_angle_delta: f64,
         max_candidates: usize,
-    ) -> (bool, Vec<StarTriangleMatch>)
+    ) -> (bool, Vec<StarMatchMappingSet>)
     where
-        I: Iterator<Item = Subcube>,
+        I: Iterator<Item = Subcube> + Clone,
     {
         assert!(
             self.has_derived_data(),
@@ -723,7 +727,44 @@ impl Catalog {
             return (true, vec![]);
         };
 
-        self.find_star_triangles(subcube_iter, &search, max_candidates)
+        let (finished, mut candidates) =
+            self.find_star_triangles(subcube_iter.clone(), &search, max_candidates);
+        candidates.sort_by(StarTriangleMatch::compare_angle_sum);
+        let mut mapped_candidates = vec![];
+        for c in candidates {
+            let mut okay = true;
+            let q = c.quaternion();
+            let mut mapping_set = crate::StarMatchMappingSet {
+                initial_match: c,
+                mappings: vec![],
+                q,
+                angle_mean: 0.0,
+                angle_sd: 0.0,
+            };
+            for (i, isv) in img_space_vectors.iter().enumerate() {
+                let v = q.apply3_arr(isv);
+                let Some(cos_star) = self.closest_to_dir(subcube_iter.clone(), &v) else {
+                    okay = false;
+                    break;
+                };
+                mapping_set.mappings.push(StarMatchMapping {
+                    star: cos_star.1,
+                    img_index: i,
+                    ordering: 0.0,
+                    quality: 0.0,
+                    img_vector: (*isv).into(),
+                    star_vector: (*self[cos_star.1].vector()).into(),
+                });
+            }
+            if !okay {
+                continue;
+            }
+            mapping_set.order_by_distance();
+            mapping_set.generate_q();
+            mapping_set.derive_stats();
+            mapped_candidates.push(mapping_set);
+        }
+        (finished, mapped_candidates)
     }
 }
 

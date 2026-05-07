@@ -17,6 +17,13 @@ test_all:
 	cargo test --release --features csv
 	cargo test --release --features hipp_bright
 
+.PHONY: test_hipp_bright
+test_hipp_bright:
+	cargo test --release --features hipp_bright
+
+.PHONY: install
+	cargo install --path . --features image,postcard,csv,hipp_bright
+
 .PHONY: release
 release:
 	cargo build --release --features image,postcard,csv,hipp_bright

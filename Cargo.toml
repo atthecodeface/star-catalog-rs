@@ -1,6 +1,6 @@
 [package]
 name = "star-catalog"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 readme = "README.md"
 authors = ["Gavin J Stark"]
@@ -13,8 +13,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/star-catalog-rs"
 
 [features]
-default = ["postcard"]
-# default = ["postcard", "image", "hipp_bright"]
+# default = ["postcard"]
+default = ["postcard", "image", "hipp_bright"]
 image = ["dep:image"]
 csv = ["dep:csv"]
 postcard = ["dep:postcard"]

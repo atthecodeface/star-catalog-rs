@@ -547,7 +547,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
 
     let subcube_iter = Subcube::iter_all();
     let search = StarTriangleSearch::of_angles(angles_to_find, max_angle_delta).unwrap();
-    let (finished, mut r) = catalog.find_star_triangles(subcube_iter, &search, 1000);
+    let (finished, mut r) = catalog.find_star_triangles(subcube_iter, &search, 10 * 1000 * 1000);
     r.sort_by(StarTriangleMatch::compare_angle_sum);
     for tm in &r {
         let t = tm.triangle();
@@ -569,7 +569,7 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
         );
     }
     if !finished {
-        print!("More than 1000 candidates were found - try a smaller max angle delta");
+        print!("More than 10,000,000 candidates were tried - try a smaller max magnitude");
     }
     Ok(())
 }
