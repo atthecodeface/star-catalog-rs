@@ -738,7 +738,7 @@ impl Catalog {
                 mappings: vec![],
                 q,
                 angle_mean: 0.0,
-                angle_sd: 0.0,
+                quality: 0.0,
             };
             for (i, isv) in img_space_vectors.iter().enumerate() {
                 let v = q.apply3_arr(isv);
@@ -758,7 +758,7 @@ impl Catalog {
             if !okay {
                 continue;
             }
-            mapping_set.order_by_distance();
+            mapping_set.order_by_angle();
             mapping_set.generate_q();
             mapping_set.derive_stats();
             mapped_candidates.push(mapping_set);

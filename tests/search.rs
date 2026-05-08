@@ -241,7 +241,7 @@ fn test_find_caph() -> Result<(), Box<dyn Error>> {
     // View to ECEF is rijk 0.7464623291490128, 0.5184452038309155, -0.3327355431837139,  0.2515862080647313
 
     let mut found = false;
-    results.sort_by(|a, b| a.angle_sd.partial_cmp(&b.angle_sd).unwrap());
+    results.sort_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap());
     for r in results {
         eprintln!(
             "{} {:?}",
@@ -251,7 +251,7 @@ fn test_find_caph() -> Result<(), Box<dyn Error>> {
         eprintln!(
             "{} {} {:?}",
             r.angle_mean * 180.0 / 3.14159265,
-            r.angle_sd * 180.0 / 3.14159265,
+            r.quality * 180.0 / 3.14159265,
             r.quaternion()
         );
         let mut num_incorrect = 0;

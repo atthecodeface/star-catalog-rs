@@ -74,9 +74,9 @@ pub struct StarMatchMappingSet {
     /// Mean of angle deltas (in radians) between the mapped stars and their
     /// img_vector after 'q' is applied
     pub angle_mean: f64,
-    /// Standard deviation of angle deltas (in radians) between the mapped stars and their
+    /// Quality of match of the mapped stars and their
     /// img_vector after 'q' is applied
-    pub angle_sd: f64,
+    pub quality: f64,
 }
 impl StarMatchMappingSet {
     pub fn quaternion(&self) -> Quat {
@@ -98,6 +98,19 @@ impl StarMatchMappingSet {
         self.mappings
             .sort_by(|a, b| a.ordering.partial_cmp(&b.ordering).unwrap());
     }
+    pub fn order_by_angle(&mut self) {
+        let v = self.find_central_star_vector();
+        let dv = (self.mappings[0].star_vector - v).normalize();
+        let dv2 = dv.cross_product(&v).normalize();
+        for m in &mut self.mappings {
+            let m_v = (m.star_vector - v).normalize();
+            let c = dv.dot(&m_v);
+            let s = dv2.dot(&m_v);
+            m.ordering = s.atan2(c);
+        }
+        self.mappings
+            .sort_by(|a, b| a.ordering.partial_cmp(&b.ordering).unwrap());
+    }
     pub fn generate_q(&mut self) {
         let n = self.mappings.len();
         let mut q = Vec::with_capacity(n);
@@ -111,19 +124,25 @@ impl StarMatchMappingSet {
         }
         self.q = Quat::weighted_average_many(q.into_iter().map(|q| (1.0, *q)));
     }
+
     pub fn derive_stats(&mut self) {
         let n = self.mappings.len();
         let mut angle_mean = 0.0;
-        let mut angle_var = 0.0;
+        let mut quality = 0.0;
         for m in &mut self.mappings {
             let v = self.q.apply3_arr(&m.img_vector);
-            let star_angle_delta = m.star_vector.dot(&v).acos();
+            let cos_star_angle_delta = m.star_vector.dot(&v);
+            // For small angles, cos = 1 - x^2/2; ln(cos) is negative (with gradient 1 at cos=1, angle=0)
+            //
+            // A geometric mean of cos of angles is an indication of quality; hence (minus) the average of the logs is too
+            //
+            let star_angle_delta = cos_star_angle_delta.acos();
             m.quality = star_angle_delta;
             angle_mean += star_angle_delta;
-            angle_var += star_angle_delta * star_angle_delta;
+            quality = quality - cos_star_angle_delta.ln();
         }
         self.angle_mean = angle_mean / (n as f64);
-        self.angle_sd = angle_var.sqrt() / (n as f64);
+        self.quality = quality / (n as f64);
     }
 }
 
@@ -198,6 +217,7 @@ impl StarTriangleSearch {
             cos_max_angles_to_find,
         })
     }
+
     pub fn triangle_match(&self, catalog: &Catalog, triangle: StarTriangle) -> StarTriangleMatch {
         let s0 = &catalog[triangle.0];
         let s1 = &catalog[triangle.1];

@@ -704,9 +704,9 @@ fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::
         return Ok(());
     }
 
-    results.sort_by(|a, b| a.angle_sd.partial_cmp(&b.angle_sd).unwrap());
+    results.sort_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap());
     for (n, r) in results.into_iter().enumerate() {
-        if n > 0 && r.angle_sd > max_angle_delta {
+        if n > 0 && r.quality > max_angle_delta {
             println!(" + others with larger max_angle_delta");
             break;
         }
@@ -718,7 +718,7 @@ fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::
         println!(
             "mean:{:.4} sd:{:.4} q:{:?}",
             r.angle_mean * 180.0 / 3.14159265,
-            r.angle_sd * 180.0 / 3.14159265,
+            r.quality * 180.0 / 3.14159265,
             r.quaternion()
         );
         for m in r.mappings {
