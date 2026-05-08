@@ -12,6 +12,11 @@ categories = ["science"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/star-catalog-rs"
 
+# For profiling ?
+# [profile.release]
+# debug = true
+# debug = "line-tables-only"
+
 [features]
 # default = ["postcard"]
 default = ["postcard", "image", "hipp_bright"]

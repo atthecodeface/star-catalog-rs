@@ -1,6 +1,5 @@
 use crate::{Catalog, CatalogIndex, Quat, Vec3};
 use geo_nd::{Quaternion, Vector, vector};
-use serde_json::map;
 
 #[derive(Debug, Clone, Copy)]
 pub struct StarTriangle(pub CatalogIndex, pub CatalogIndex, pub CatalogIndex);
@@ -116,9 +115,10 @@ impl StarMatchMappingSet {
         let n = self.mappings.len();
         let mut angle_mean = 0.0;
         let mut angle_var = 0.0;
-        for m in &self.mappings {
+        for m in &mut self.mappings {
             let v = self.q.apply3_arr(&m.img_vector);
             let star_angle_delta = m.star_vector.dot(&v).acos();
+            m.quality = star_angle_delta;
             angle_mean += star_angle_delta;
             angle_var += star_angle_delta * star_angle_delta;
         }

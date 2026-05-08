@@ -4,8 +4,8 @@
 
 //a Imports
 use clap::{
-    builder::IntoResettable, builder::StyledStr, parser::ValuesRef, value_parser, Arg, ArgAction,
-    ArgMatches, Command,
+    Arg, ArgAction, ArgMatches, Command, builder::IntoResettable, builder::StyledStr,
+    parser::ValuesRef, value_parser,
 };
 
 //a Catalog
@@ -87,6 +87,27 @@ pub fn add_height_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -
 /// Retrieve the value of the height argument
 pub fn height(matches: &ArgMatches, default: usize) -> usize {
     *matches.get_one::<usize>("height").unwrap_or(&default)
+}
+
+//fp add_focal_length_arg
+/// Add an optional argument to a clap [Command] to specify the focal length of a camera image
+/// of an image
+pub fn add_focal_length_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -> Command {
+    cmd.arg(
+        Arg::new("focal_length")
+            .long("focal_length")
+            .short('f')
+            .value_parser(value_parser!(f64))
+            .long_help(long_help)
+            .action(ArgAction::Set),
+    )
+}
+
+//fp focal_length
+/// Retrieve the value of the field-of-view argument or a default value
+///
+pub fn focal_length(matches: &ArgMatches, default: f64) -> f64 {
+    *matches.get_one::<f64>("focal_length").unwrap_or(&default)
 }
 
 //fp add_fov_arg
@@ -254,6 +275,23 @@ pub fn add_angles_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -
 /// Retrieve the value of the angles argument
 pub fn angles(matches: &ArgMatches) -> Option<ValuesRef<'_, f64>> {
     matches.get_many::<f64>("angles")
+}
+
+//fp add_points_arg
+/// Add an positional argument to a clap [Command] to specify a list of angles
+pub fn add_points_arg(cmd: Command, long_help: impl IntoResettable<StyledStr>) -> Command {
+    cmd.arg(
+        Arg::new("points")
+            .value_parser(value_parser!(usize))
+            .long_help(long_help)
+            .action(ArgAction::Append),
+    )
+}
+
+//fp points
+/// Retrieve the value of the angles argument
+pub fn points(matches: &ArgMatches) -> Option<ValuesRef<'_, usize>> {
+    matches.get_many::<usize>("points")
 }
 
 //a Image arguments

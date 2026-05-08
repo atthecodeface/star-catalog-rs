@@ -28,6 +28,12 @@ test_hipp_bright:
 release:
 	cargo build --release --features image,postcard,csv,hipp_bright
 
+.PHONY: dtrace
+dtrace:
+	cargo build --release --features image,postcard,csv,hipp_bright
+	rm -rf a.trace
+	xctrace record --output a.trace --template "Time Profiler" --target-stdout - --launch -- ./target/release/star-catalog hipp_bright -m 6 stars_of_image -f 23.48 -W 5184 -H 3456 -a 0.3 1775 1776 2026 1486 1677 1979 4069 1314 2064 1781 3982 1006
+
 .PHONY: clippy
 clippy:
 	cargo clippy --features image,postcard,csv,hipp_bright

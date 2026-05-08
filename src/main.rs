@@ -177,6 +177,56 @@ provided by the 'angle' option to the triangle command.
 ",
     );
 
+    let stars_of_image_subcmd = Command::new("stars_of_image").about(
+        "Find stars given points on an image from a rectilinear camera
+
+The catalog is searched for stars that align with the provided points.
+",
+    );
+
+    let stars_of_image_subcmd = cmdline::add_angle_arg(
+        stars_of_image_subcmd,
+        "Maximum angular separation to search within
+
+This provides the angle, in degrees, within which the actual angular
+separation of the stars must match that provided by the 'angles'
+option.
+
+The default is 0.1 degrees
+",
+    );
+
+    let stars_of_image_subcmd = cmdline::add_focal_length_arg(
+        stars_of_image_subcmd,
+        "The focal length (35mm equivalent) the image was taken in
+
+This indicates the field of view of the image
+",
+    );
+
+    let stars_of_image_subcmd = cmdline::add_width_arg(
+        stars_of_image_subcmd,
+        "The width of the image in pixels
+
+",
+    );
+
+    let stars_of_image_subcmd = cmdline::add_height_arg(
+        stars_of_image_subcmd,
+        "The height of the image in pixels
+
+
+",
+    );
+
+    let stars_of_image_subcmd = cmdline::add_points_arg(
+        stars_of_image_subcmd,
+        "The points of the centers of stars on the image
+
+
+",
+    );
+
     let write_subcmd =
         Command::new("write").about("Write out the catalog (after star region selection)");
     let write_subcmd = cmdline::add_output_arg(
@@ -362,6 +412,7 @@ This is in degrees, and defaults to 0.
     let cmd = cmd.subcommand(find_subcmd);
     let cmd = cmd.subcommand(angle_subcmd);
     let cmd = cmd.subcommand(triangle_subcmd);
+    let cmd = cmd.subcommand(stars_of_image_subcmd);
     let cmd = cmd.subcommand(write_subcmd);
 
     #[cfg(feature = "image")]
@@ -443,6 +494,9 @@ This is in degrees, and defaults to 0.
         }
         Some(("triangle", sub_matches)) => {
             find_triangle(catalog, sub_matches)?;
+        }
+        Some(("stars_of_image", sub_matches)) => {
+            stars_of_image(catalog, sub_matches)?;
         }
         Some(("write", sub_matches)) => {
             write(catalog, sub_matches)?;
@@ -571,6 +625,117 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
     if !finished {
         print!("More than 10,000,000 candidates were tried - try a smaller max magnitude");
     }
+    Ok(())
+}
+
+fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
+    fn vector_of_img(w: usize, h: usize, mm_equiv: f64, x: usize, y: usize) -> [f64; 3] {
+        //  tan_hfovh = 18 / mm_equiv;
+        //  fovh = 2 * Math.atan(tan_hfovh);
+        //  tan_hfovh = Math.tan(this.fovh / 2);
+
+        let w = w as f64;
+        let h = h as f64;
+        // -h/w < yf < h/w, for yf in the height of the image
+        let xf = ((x as f64) - w / 2.0) / (w / 2.0);
+        let yf = ((y as f64) - h / 2.0) / (w / 2.0);
+
+        // rectilinear:
+        //  sensor_rf = R tan (world_yaw)
+        //
+        //  sensor_rf of 1 occurs at xf=1.0 for half field-of-view
+        //  world_yaw at xf=1.0 is atan(half-36-mm-frame / 36mm_equiv focal distance)
+        //  hence tan(world_yaw) = 18.0 / mm_equiv = sensor_rf / R = 1.0 / R
+        //  hence R = mm_equiv / 18.0
+        //  and hence
+        //  world_yaw = atan(sensor_rf * 18 / mm_equiv)
+        let sensor_rf = (xf * xf + yf * yf).sqrt();
+        let roll = yf.atan2(xf);
+
+        let world_yaw = (sensor_rf * 18.0 / mm_equiv).atan();
+        [
+            world_yaw.cos(),
+            -world_yaw.sin() * roll.cos(),
+            -world_yaw.sin() * roll.sin(),
+        ]
+    }
+
+    // * On a  5184 by 3456 that is rectilinear(?) with focal lengrh 24.1mm
+    //
+    let Some(points) = cmdline::points(matches) else {
+        return Err(anyhow!("Must specify points on the image"));
+    };
+
+    if points.len() % 2 != 0 {
+        return Err(anyhow!(
+            "Points are specified as XY pairs, but odd number of values was given",
+        ));
+    }
+    if points.len() < 6 {
+        return Err(anyhow!("At least 3 points must be specified",));
+    }
+    let points: Vec<_> = points.collect();
+
+    let max_angle_delta = cmdline::angle(matches, 0.1);
+    let subcube_iter = Subcube::iter_all();
+
+    let w = cmdline::width(matches, 5184);
+    let h = cmdline::height(matches, w * 3 / 4);
+    let mm_equiv = cmdline::focal_length(matches, 24.0);
+    let mut img_vectors: Vec<[f64; 3]> = vec![];
+
+    for xy in points.as_chunks::<2>().0 {
+        img_vectors.push(vector_of_img(w, h, mm_equiv, *xy[0], *xy[1]).into());
+    }
+
+    let a01 = geo_nd::vector::dot(&img_vectors[0], &img_vectors[1]).acos() * 180.0 / 3.1415926;
+    let a12 = geo_nd::vector::dot(&img_vectors[1], &img_vectors[2]).acos() * 180.0 / 3.1415926;
+    let a20 = geo_nd::vector::dot(&img_vectors[2], &img_vectors[0]).acos() * 180.0 / 3.1415926;
+    println!(
+        "Initial triangle angles: {a01} {a12} {a20} max_angle_delta:{}",
+        max_angle_delta * 180.0 / 3.14159265
+    );
+
+    let (_finished, mut results) =
+        catalog.find_best_star_mappings(subcube_iter, &img_vectors, max_angle_delta, usize::MAX);
+
+    if results.is_empty() {
+        eprintln!("No results found");
+        return Ok(());
+    }
+
+    results.sort_by(|a, b| a.angle_sd.partial_cmp(&b.angle_sd).unwrap());
+    for (n, r) in results.into_iter().enumerate() {
+        if n > 0 && r.angle_sd > max_angle_delta {
+            println!(" + others with larger max_angle_delta");
+            break;
+        }
+        println!(
+            "match sum:{:.4} q:{:.4?}",
+            r.initial_match.angle_sum(),
+            r.initial_match.quaternion(),
+        );
+        println!(
+            "mean:{:.4} sd:{:.4} q:{:?}",
+            r.angle_mean * 180.0 / 3.14159265,
+            r.angle_sd * 180.0 / 3.14159265,
+            r.quaternion()
+        );
+        for m in r.mappings {
+            println!(
+                "   idx:{} '{}x{}' id:{} mag:{} ordering:{:.4} qual:{:.4}",
+                m.img_index,
+                points[(m.img_index * 2) as usize],
+                points[(m.img_index * 2) as usize + 1],
+                catalog[m.star].id(),
+                catalog[m.star].magnitude(),
+                m.ordering,
+                m.quality
+            );
+        }
+        eprintln!();
+    }
+
     Ok(())
 }
 

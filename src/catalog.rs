@@ -4,7 +4,6 @@ use std::path::Path;
 
 use geo_nd::{Quaternion, Vector};
 use serde::{Deserialize, Serialize};
-use serde_json::map;
 
 // hipparcos is used only with some features
 #[allow(unused_imports)]
