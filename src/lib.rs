@@ -238,6 +238,7 @@ pub use star_triangle::{
 
 pub use catalog::{Catalog, CatalogIndex};
 pub use error::Error;
+pub use orbit::{Orbit, SOLAR_SYSTEM};
 pub use star::Star;
 pub use star_filter::{StarFilter, StarFilterFn};
 pub use subcube::Subcube;
