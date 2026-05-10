@@ -25,6 +25,9 @@ csv = ["dep:csv"]
 postcard = ["dep:postcard"]
 hipp_bright = ["dep:postcard"]
 
+[dependencies]
+num-traits = "0.2.19"
+
 [dependencies.serde_json]
 version = "1.0"
 features = ["alloc"]

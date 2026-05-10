@@ -218,6 +218,7 @@ pub use geo_nd;
 
 mod catalog;
 mod error;
+mod orbit;
 mod star;
 mod star_filter;
 mod star_triangle;
