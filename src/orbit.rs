@@ -36,11 +36,21 @@ pub const fn unix_time(
     time_of_day
 }
 
-/// An elliptical orbit is fully described by the plane in which it sits (a
+/// A simple elliptical orbit is fully described by the plane in which it sits (a
 /// normal, the line of apsides, and the perpendicular to these).
 ///
-/// If the normal is different to the XY of the plane of reference, then the
-/// angle between the two normals is the inclination.
+/// The elliptical orbit is an ellipse which can be described with one focus at
+/// the origin and the object in orbit travelling around the orbital XY plane,
+/// with perigee (point closest to the focus) at Y=0.
+///
+/// The elliptical orbit is embedded in its parent's reference frame; at any one
+/// (period of) time the plane of the orbit has a rotation with respect to the
+/// parent's reference frame. This can be described (for a certain time or
+/// period of time) by an inclination, longitude of ascending node, and argument
+/// of periapsis.
+///
+/// If the normal is different to that of the normal to the XY of the plane of
+/// reference, then the angle between the two normals is the inclination.
 ///
 /// If the normal is different to the XY of the plane of reference, then the
 /// orbital plane interesects the XY plane of reference in a line; this line will be
@@ -57,6 +67,20 @@ pub const fn unix_time(
 ///
 /// When the object is at true_anomaly of 0 it is at perigee; it is at (X,0,0) and has velocity (0,+,0).
 ///
+/// For the orbits of the planets around the sun this orbital description is
+/// sufficient for a human timescale. However, for smaller orbits some further
+/// effects need to be modelled - that of the evolution of the mapping between
+/// the orbital plane and the parent's frame of reference.
+///
+/// The first addition to the simple elliptical orbit the orbit is apsidal
+/// precession; this is where the line of apsides rotates around the orbit's Z
+/// axis, at a certain rate. The moon has an apsidal precession of 360 degrees
+/// every 3,233 days.
+///
+/// The second addition is nodal precession, where the longiude of ascending
+/// node of the orbit rotates around an arbitrary axis in the parent's reference
+/// frame. The moon exhibits a precession of 360 degrees every 6,793 days around
+/// the normal to the earth-moon ecliptic.
 #[derive(Debug, Clone)]
 pub struct KeplerianElements {
     /// Inclination of the orbit - angle between parent 'Z' axis and normal to the orbital plane (one of the degrees of freedom of the plane)
@@ -77,6 +101,8 @@ pub struct KeplerianElements {
     true_anomaly_at_epoch: f64,
     /// Epoch in seconds since Jan 1 1970
     epoch: i64,
+    // Add rate of apsidal precession
+    // Add rate and axis of nodal precession
 }
 
 impl KeplerianElements {
@@ -173,6 +199,18 @@ pub const NEPTUNE_SOLAR_J2000: KeplerianElements = KeplerianElements {
     semimajor_axis: 4.503E9,
     period_of_orbit: 60_195.0 * (24.0 * 60.0 * 60.0),
     true_anomaly_at_epoch: 360.0 - 94.21, // Perihelion at 2042-Sep-04
+    epoch: 946814400,
+};
+
+// Earths access of rotation (north/south pole) is at 23.44 degrees to the ecliptic axis
+pub const MOON_EARTH_UNKNOWN: KeplerianElements = KeplerianElements {
+    inclination: (5.00_f64).to_radians(), // to ecliptic - earth/moon orbit round sun
+    longitude_of_ascending_node: (0.0_f64).to_radians(), // unknown
+    argument_of_periapsis: (0.0_f64).to_radians(), // unknown; goes round 360 degrees in 8.85 years...
+    eccentricity: 0.0549006,
+    semimajor_axis: 384_748.0,
+    period_of_orbit: 60_195.0 * (24.0 * 60.0 * 60.0),
+    true_anomaly_at_epoch: 0.0, // Perihelion at ?
     epoch: 946814400,
 };
 
