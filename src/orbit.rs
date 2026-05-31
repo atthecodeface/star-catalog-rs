@@ -1,6 +1,6 @@
 use num_traits::FloatConst;
 
-use crate::{Quat, Vec3};
+use crate::{Quatf32, Vec3f32};
 use geo_nd::{Quaternion, Vector};
 
 pub const fn unix_time(
@@ -106,11 +106,11 @@ pub struct KeplerianElements {
 }
 
 impl KeplerianElements {
-    fn orbit_to_parent(&self) -> Quat {
-        Quat::default()
-            .rotate_z(self.argument_of_periapsis)
-            .rotate_y(self.inclination)
-            .rotate_z(self.longitude_of_ascending_node)
+    fn orbit_to_parent(&self) -> Quatf32 {
+        Quatf32::default()
+            .rotate_z(self.argument_of_periapsis as f32)
+            .rotate_y(self.inclination as f32)
+            .rotate_z(self.longitude_of_ascending_node as f32)
     }
 }
 
@@ -239,7 +239,7 @@ pub const SOLAR_SYSTEM: [(&str, &KeplerianElements); 8] = [
 #[derive(Debug, Clone, Default)]
 pub struct Orbit {
     /// Rotation to be applied to an orbital XYZ to place it in the parent
-    orbit_to_parent: Quat,
+    orbit_to_parent: Quatf32,
     /// Eccentricity of the orbit (0 being circular)
     eccentricity: f64,
     /// Semimajor axis (half of the distance between the points of apogee and perigee)
@@ -288,12 +288,16 @@ impl std::convert::From<&KeplerianElements> for Orbit {
 }
 
 impl Orbit {
-    pub fn orbit_to_parent(&self) -> Quat {
+    pub fn orbit_to_parent(&self) -> Quatf32 {
         self.orbit_to_parent
     }
 
-    pub fn parent_to_orbit(&self) -> Quat {
+    pub fn parent_to_orbit(&self) -> Quatf32 {
         self.orbit_to_parent.conjugate()
+    }
+
+    pub fn period_of_orbit(&self) -> f64 {
+        self.period_of_orbit
     }
 
     ///
@@ -391,12 +395,12 @@ impl Orbit {
     /// respect to its parent for a time in seconds relative to the UNIX epoch
     ///
     /// This vector is in the plane of the orbit, with perigee on the X axis
-    pub fn orbit_vec_of_unix_time(&self, time_secs: i64) -> [f64; 3] {
+    pub fn orbit_vec_of_unix_time(&self, time_secs: i64) -> [f32; 3] {
         let secs_since_perigee = self.relative_time_of_unix_time(time_secs);
         let true_anomaly = self.true_anomaly_of_relative_time(secs_since_perigee);
-        let distance = self.distance_of_true_anomaly(true_anomaly);
-        let c_ta = true_anomaly.cos();
-        let s_ta = true_anomaly.sin();
+        let distance = self.distance_of_true_anomaly(true_anomaly) as f32;
+        let c_ta = true_anomaly.cos() as f32;
+        let s_ta = true_anomaly.sin() as f32;
         [distance * c_ta, distance * s_ta, 0.0]
     }
 
@@ -404,10 +408,10 @@ impl Orbit {
     /// respect to its parent for a time in seconds relative to the UNIX epoch
     ///
     /// This vector is in the plane of the orbit, with perigee on the X axis
-    pub fn orbit_vec_of_true_anomlay(&self, true_anomaly: f64) -> [f64; 3] {
-        let distance = self.distance_of_true_anomaly(true_anomaly);
-        let c_ta = true_anomaly.cos();
-        let s_ta = true_anomaly.sin();
+    pub fn orbit_vec_of_true_anomlay(&self, true_anomaly: f64) -> [f32; 3] {
+        let distance = self.distance_of_true_anomaly(true_anomaly) as f32;
+        let c_ta = true_anomaly.cos() as f32;
+        let s_ta = true_anomaly.sin() as f32;
         [distance * c_ta, distance * s_ta, 0.0]
     }
 }
@@ -619,8 +623,8 @@ fn test_solar_system_2() {
     ] {
         let p1 = planets.get(n1).unwrap();
         let p2 = planets.get(n2).unwrap();
-        let o_v1: Vec3 = p1.orbit_vec_of_unix_time(*time).into();
-        let o_v2: Vec3 = p2.orbit_vec_of_unix_time(*time).into();
+        let o_v1: Vec3f32 = p1.orbit_vec_of_unix_time(*time).into();
+        let o_v2: Vec3f32 = p2.orbit_vec_of_unix_time(*time).into();
         let sun_v1 = p1.orbit_to_parent().apply3(&o_v1);
         let sun_v2 = p2.orbit_to_parent().apply3(&o_v2);
         let d_v1_v2 = sun_v1.distance(&sun_v2);
@@ -669,9 +673,9 @@ pub struct PrecessionalRotation {
     /// Period of precession in seconds
     precession_period: f64,
     /// Axis of precession; this is in the terms of the orbital frame of reference
-    precession_axis: Vec3,
+    precession_axis: Vec3f32,
     /// Axis of rotation at time 't=0' in the orbital frame of reference
-    axis: Vec3,
+    axis: Vec3f32,
     /// Period of rotation around 'axis' in seconds
     period: f64,
     /// Phase of rotation around 'axis' at time 0
@@ -679,13 +683,13 @@ pub struct PrecessionalRotation {
 }
 impl PrecessionalRotation {
     /// The quaternion to be applied to the axis due to precession, at time t
-    fn precessional_rotation_at_time(&self, t: f64) -> Quat {
-        Quat::of_axis_angle(&self.precession_axis, t / self.precession_period)
+    fn precessional_rotation_at_time(&self, t: f64) -> Quatf32 {
+        Quatf32::of_axis_angle(&self.precession_axis, (t / self.precession_period) as f32)
     }
     /// The quaternion describing the orbital-frame to object-fixed rotation for a time t
-    fn orbital_to_object_fixed(&self, t: f64) -> Quat {
+    fn orbital_to_object_fixed(&self, t: f64) -> Quatf32 {
         let precessional_rotation = self.precessional_rotation_at_time(t);
         let axis = precessional_rotation.apply3(&self.axis);
-        Quat::of_axis_angle(&axis, self.phase + t / self.period)
+        Quatf32::of_axis_angle(&axis, (self.phase + t / self.period) as f32)
     }
 }

@@ -214,6 +214,12 @@ pub type Vec4 = geo_nd::FArray<f64, 4>;
 /// this includes the direction and 'up' for a camera, for example
 pub type Quat = geo_nd::QArray<f64>;
 
+/// A quaternion for orbits where lower precision is required
+pub type Quatf32 = geo_nd::QArray<f32>;
+
+/// An XYZ vector used for planet orbits etc where less precision is required
+pub type Vec3f32 = geo_nd::FArray<f32, 3>;
+
 pub use geo_nd;
 
 mod catalog;
