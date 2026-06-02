@@ -431,6 +431,8 @@ impl Catalog {
     /// Find stars within a certain angle around a vector
     ///
     /// Needs data to have been derived for the Catalog
+    ///
+    /// max_angle is in radians
     #[track_caller]
     pub fn find_stars_around(&self, vector: &[f64; 3], max_angle: f64) -> Vec<CatalogIndex> {
         assert!(
@@ -705,6 +707,10 @@ impl Catalog {
     ///
     /// Needs data to have been derived for the Catalog
     ///
+    /// Returns an indicatino that max_candides was sufficient, and an
+    /// *unsorted* vec of [StarMatchMappingSet], which indicate which three main
+    /// stars were mapped, the actual mappings of the vectors provided, the
+    /// derived quaternion, and the quality of the match
     #[track_caller]
     pub fn find_best_star_mappings<I>(
         &self,

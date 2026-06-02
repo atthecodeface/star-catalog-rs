@@ -1,7 +1,7 @@
 use num_traits::FloatConst;
 
 use crate::{Quatf32, Vec3f32};
-use geo_nd::{Quaternion, Vector};
+use geo_nd::Quaternion;
 
 pub const fn unix_time(
     year: u32,
