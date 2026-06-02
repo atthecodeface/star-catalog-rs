@@ -181,7 +181,15 @@ impl Subcube {
         (1.0 - Self::SUBCUBE_RADIUS..=1.0 + Self::SUBCUBE_RADIUS).contains(&r)
     }
 
-    //mc cos_angle_on_sphere
+    /// Return true if the subcube vector is within 'cos' of the vector v
+    ///
+    /// v should be a unit vector (i.e. on the unit sphere)
+    pub(crate) fn within_cos_of_vector(&self, v: &Vec3, cos: f64) -> bool {
+        let c = self.center_non_unit();
+        let r = c.length();
+        v.dot(&c) / r >= cos
+    }
+
     /// Return None if the subcube definitely does no intersect with the unit sphere.
     ///
     /// Returns Some(cos(angle)) if the subcube might intersect with
