@@ -211,9 +211,8 @@ impl Subcube {
         }
     }
 
-    //mp iter_all
     /// Get an iterator over all the Subcubes in the (-1, 1) cube
-    pub fn iter_all() -> SubcubeRangeIter {
+    pub fn iter_all() -> impl Iterator<Item = Subcube> + Clone {
         SubcubeRangeIter {
             xyz: (0, 0, 0),
             xrange: 0..Self::ELE_PER_SIDE,
@@ -231,7 +230,7 @@ impl Subcube {
     ///
     /// A value of 1 for dxyz returns an iterator over this subcube
     /// and all its immediate neighbors
-    pub fn iter_range(&self, dxyz: usize) -> SubcubeRangeIter {
+    pub fn iter_range(&self, dxyz: usize) -> impl Iterator<Item = Subcube> + Clone + 'static {
         let xyz: (usize, usize, usize) = (*self).into();
         let xmin = xyz.0.saturating_sub(dxyz);
         let xmax = (xyz.0 + dxyz + 1).min(Self::ELE_PER_SIDE);
@@ -287,7 +286,6 @@ impl std::ops::Add<isize> for Subcube {
     }
 }
 
-//tp SubcubeRangeIter
 /// Iterator over a range of Subcubes
 #[derive(Debug, Clone)]
 pub struct SubcubeRangeIter {
@@ -296,7 +294,8 @@ pub struct SubcubeRangeIter {
     yrange: std::ops::Range<usize>,
     zrange: std::ops::Range<usize>,
 }
-impl std::iter::Iterator for SubcubeRangeIter {
+
+impl Iterator for SubcubeRangeIter {
     type Item = Subcube;
     fn next(&mut self) -> Option<Subcube> {
         if !self.xrange.contains(&self.xyz.0) {
