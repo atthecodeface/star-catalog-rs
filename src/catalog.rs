@@ -674,14 +674,21 @@ impl Catalog {
         true
     }
 
-    /// Finds the best star mappings for
+    /// Finds the best star mappings for a given set of image space vectors,
+    /// given a maximm angle delta in radians that the errors in each of the
+    /// angles between the stars found cannot exceed it; try at most
+    /// max_candidates (and indicate if this limt was reached)
     ///
     /// Needs data to have been derived for the Catalog
     ///
-    /// Returns an indicatino that max_candides was sufficient, and an
+    /// Returns an indicatino that max_candidates was sufficient, and an
     /// *unsorted* vec of [StarMatchMappingSet], which indicate which three main
     /// stars were mapped, the actual mappings of the vectors provided, the
     /// derived quaternion, and the quality of the match
+    ///
+    /// The returned vector is sorted by the *initial triangle* best angle error
+    /// sum, not with any of the quality of the subsequent candidates for the
+    /// rest of the image vectors
     #[track_caller]
     pub fn find_best_star_mappings<I>(
         &self,
