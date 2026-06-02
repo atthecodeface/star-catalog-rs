@@ -328,3 +328,50 @@ fn test_find_stars_around_caph() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[cfg(feature = "hipp_bright")]
+#[test]
+fn test_find_stars_around_caph_all_bright() -> Result<(), Box<dyn Error>> {
+    let magnitude = 15.0;
+    let mut catalog = Catalog::load_catalog("hipp_bright", magnitude)?;
+    catalog.sort();
+    catalog.derive_data();
+
+    let caph = &catalog[catalog.find_id_or_name("746")?];
+    assert_eq!(caph.id(), 746);
+    let caph_v: Vec3 = caph.vector().into();
+
+    // Look for all stars with 13.5 degrees of Caph (angle between Caph and HIP8886 is 13.261+ degrees)
+    let max_angle = 0.23561944901923448;
+    let mut found_hip_8886 = false;
+    for s in catalog.find_stars_around(caph.vector(), max_angle) {
+        found_hip_8886 |= catalog[s].id() == 8886;
+        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+    }
+    assert!(found_hip_8886);
+    assert_eq!(
+        catalog
+            .find_stars_around(caph.vector(), max_angle)
+            .iter()
+            .count(),
+        843
+    );
+
+    // Should not find HIP 8886 with tighter angle delta
+    let max_angle = max_angle * 0.95;
+    let mut found_hip_8886 = false;
+    for s in catalog.find_stars_around(caph.vector(), max_angle) {
+        found_hip_8886 |= catalog[s].id() == 8886;
+        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+    }
+    assert!(!found_hip_8886);
+    assert_eq!(
+        catalog
+            .find_stars_around(caph.vector(), max_angle)
+            .iter()
+            .count(),
+        759
+    );
+
+    Ok(())
+}
