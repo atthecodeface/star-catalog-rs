@@ -221,6 +221,20 @@ impl Subcube {
         }
     }
 
+    /// Get an iterator over all the Subcubes that may be on the sphere
+    pub fn iter_sphere() -> impl Iterator<Item = Subcube> + Clone {
+        SubcubeSphereIter::default()
+    }
+
+    /// Get an iterator over all the Subcubes that may be on the sphere whose cos(angle) to a vector is at least a given value
+    pub fn iter_sphere_within_cos_of_vector(
+        v: &[f64; 3],
+        cos: f64,
+    ) -> impl Iterator<Item = Subcube> + Clone {
+        let v: Vec3 = v.into();
+        SubcubeSphereIter::default().filter(move |s| s.within_cos_of_vector(&v, cos))
+    }
+
     //mp iter_range
     /// Get an iterator over this Subcube and all with X, Y or Z
     /// coordinates within dxyz of it
@@ -313,5 +327,137 @@ impl Iterator for SubcubeRangeIter {
         let subcube = self.xyz.into();
         self.xyz.0 += 1;
         Some(subcube)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+enum SubcubeSphereIterState {
+    // Starting - set z to 0, and then begin
+    #[default]
+    Init,
+    // Start a 'z' layer, at the current value of 'z'
+    StartZ,
+    // Start a 'y' row, at the current value of 'z' and 'y'
+    StartY,
+    // Finished a 'z' layer; increment z and if not finished completely, StartZ
+    FinishedZ,
+    // Start a row (row_start_x valid, x=row_start_x, y=0, z=0;)
+    //
+    // Return Some(+-x,+-y,+-z), move to another state, or decrement x, or if x is already 0 then FinishedZ
+    //
+    // bitmask goes 0 through 7; bit 0 indicates use minus X, bit 1 indicates use minus Y, bit 2 indicates use minus Z (where minus is the other side of half-the-subcubes)
+    YieldXYZ,
+}
+/// Iterator over the subcubes that include/touch the unit sphere
+#[derive(Debug, Clone, Default)]
+pub struct SubcubeSphereIter {
+    state: SubcubeSphereIterState,
+    z: usize,
+    row_start_x: usize,
+    y: usize,
+    x: usize,
+    bitmask: u8,
+}
+
+impl Iterator for SubcubeSphereIter {
+    type Item = Subcube;
+    fn next(&mut self) -> Option<Subcube> {
+        loop {
+            match self.state {
+                SubcubeSphereIterState::Init => {
+                    self.z = 0;
+                    self.state = SubcubeSphereIterState::StartZ;
+                }
+                SubcubeSphereIterState::StartZ => {
+                    // Start at the 'ceiling' x for the row
+                    let z = (self.z as f64) * Subcube::SUBCUBE_SIZE;
+                    self.row_start_x = (Subcube::index_of_coord((1.0 - z * z).sqrt())
+                        - Subcube::HALF_ELE_PER_SIDE
+                        + 1)
+                    .min(Subcube::HALF_ELE_PER_SIDE - 1);
+                    // eprintln!("Start layer Z {}", self.z);
+                    self.y = 0;
+                    self.state = SubcubeSphereIterState::StartY;
+                }
+                SubcubeSphereIterState::StartY => {
+                    // Start at the given row start (possibly from previous row)
+                    self.x = self.row_start_x;
+                    // eprintln!("Start row Y {} {} {}", self.z, self.y, self.x);
+                    self.bitmask = 0;
+                    let mut subcube: Subcube = (
+                        Subcube::HALF_ELE_PER_SIDE + self.x,
+                        Subcube::HALF_ELE_PER_SIDE + self.y,
+                        Subcube::HALF_ELE_PER_SIDE + self.z,
+                    )
+                        .into();
+                    loop {
+                        if subcube.may_be_on_sphere() {
+                            // Start *next* row at this row_start (as the start of increasing Y row is always decreasing X values)
+                            self.row_start_x = self.x;
+                            // Yield all 8 of +-xyz, using the bitmask
+                            self.bitmask = 0;
+                            self.state = SubcubeSphereIterState::YieldXYZ;
+                            break;
+                        }
+                        if self.x == 0 {
+                            // For a given z, y can have been incremented such that all z^2 + y^2 > 1, and hence all x are outside the sphere; end the Z layer
+                            self.state = SubcubeSphereIterState::FinishedZ;
+                            break;
+                        }
+                        subcube = subcube + (-1);
+                        self.x -= 1;
+                    }
+                }
+                SubcubeSphereIterState::YieldXYZ => {
+                    let mut xyz = (
+                        Subcube::HALF_ELE_PER_SIDE + self.x,
+                        Subcube::HALF_ELE_PER_SIDE + self.y,
+                        Subcube::HALF_ELE_PER_SIDE + self.z,
+                    );
+                    if (self.bitmask & 1) != 0 {
+                        xyz.0 = Subcube::HALF_ELE_PER_SIDE - 1 - self.x;
+                    }
+                    if (self.bitmask & 2) != 0 {
+                        xyz.1 = Subcube::HALF_ELE_PER_SIDE - 1 - self.y;
+                    }
+                    if (self.bitmask & 4) != 0 {
+                        xyz.2 = Subcube::HALF_ELE_PER_SIDE - 1 - self.z;
+                    }
+                    self.bitmask += 1;
+                    if self.bitmask >= 8 {
+                        let mut finished_row = self.x == 0;
+                        if !finished_row {
+                            self.x -= 1;
+                            let subcube: Subcube = (
+                                Subcube::HALF_ELE_PER_SIDE + self.x,
+                                Subcube::HALF_ELE_PER_SIDE + self.y,
+                                Subcube::HALF_ELE_PER_SIDE + self.z,
+                            )
+                                .into();
+                            finished_row = !subcube.may_be_on_sphere();
+                        }
+                        if finished_row {
+                            self.y += 1;
+                            if self.y >= Subcube::HALF_ELE_PER_SIDE {
+                                self.state = SubcubeSphereIterState::FinishedZ;
+                            } else {
+                                self.state = SubcubeSphereIterState::StartY;
+                            }
+                        } else {
+                            self.bitmask = 0;
+                        }
+                    }
+                    return Some(xyz.into());
+                }
+                SubcubeSphereIterState::FinishedZ => {
+                    self.z += 1;
+                    if self.z >= Subcube::HALF_ELE_PER_SIDE {
+                        return None;
+                    } else {
+                        self.state = SubcubeSphereIterState::StartZ;
+                    }
+                }
+            }
+        }
     }
 }
