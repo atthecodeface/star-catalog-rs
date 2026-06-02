@@ -536,29 +536,12 @@ impl Catalog {
             .map(|(min, max)| (max.cos(), min.cos()))
             .collect();
 
-        // Determine the delta to the subcube for each angle (subcubes
-        // outside the delta range for a subcube are guaranteed to
-        // have a larger angle between all the stars in them than any
-        // of the angle deltas that are being looked for)
-        //
-        // With max mag 7...
-        // For max 33.57 degrees (mag 7.0) needs range = 8
-        // For max 25.71 degrees (mag 5.0) needs range = 7
-        // let range = Subcube::ELE_PER_SIDE / 2;
-        // For max 15.71 degrees (mag 5.0)  needs range = 3
-        // let range = Subcube::ELE_PER_SIDE / 2;
-        let max_angle = search
-            .angles_to_find
-            .iter()
-            .fold(0.0, |acc: f64, b| acc.max(*b));
-        let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
-
         // Run through all the supplied subcubes
         let mut number_candidates_tried = 0;
         let mut number_found = 0;
         let mut subcubes_to_search = vec![];
 
-        for sub0 in subcube_iter {
+        for sub0 in subcube_iter.clone() {
             if self[sub0].is_empty() {
                 continue;
             }
@@ -579,7 +562,7 @@ impl Catalog {
             let max_cos = subcube_cos_angle_ranges[0]
                 .1
                 .max(subcube_cos_angle_ranges[1].1);
-            for s12 in sub0.iter_range(subcube_range) {
+            for s12 in subcube_iter.clone() {
                 if self[s12].is_empty() {
                     continue;
                 }
