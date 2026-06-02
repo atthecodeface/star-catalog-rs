@@ -93,10 +93,11 @@ pub struct Subcube(u32);
 
 //ip Subcube
 impl Subcube {
+    const HALF_ELE_PER_SIDE: usize = 16;
     //cp ELE_PER_SIDE
     /// The number of subdivisions per dimension of the (-1,1) cube
     /// that produces the subcubes
-    pub const ELE_PER_SIDE: usize = 32;
+    pub const ELE_PER_SIDE: usize = Self::HALF_ELE_PER_SIDE * 2;
 
     const ELE_PER_SIDE2: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
 
@@ -112,7 +113,7 @@ impl Subcube {
     pub const NUM_SUBCUBES: usize = Self::ELE_PER_SIDE * Self::ELE_PER_SIDE * Self::ELE_PER_SIDE;
 
     /// The size of each side of a Subcube
-    pub const SUBCUBE_SIZE: f64 = 2.0 / Self::ELE_PER_SIDE as f64;
+    pub const SUBCUBE_SIZE: f64 = 1.0 / Self::HALF_ELE_PER_SIDE as f64;
 
     /// The raduis of the circumsphere of a Subcube - i.e. all stars
     /// within the subcube must be closer tthan this to the centre of
@@ -126,7 +127,7 @@ impl Subcube {
     /// The coordinate must be in the range -1. to 1.
     fn index_of_coord(c: f64) -> usize {
         let c = c.min(1.);
-        ((c + 1.0).abs() * (Self::ELE_PER_SIDE as f64) / 2.0 * 0.999_999).floor() as usize
+        ((c + 1.0).abs() * (Self::HALF_ELE_PER_SIDE as f64) * 0.999_999).floor() as usize
     }
 
     //fi coord_of_index
