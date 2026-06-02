@@ -1,3 +1,4 @@
+
 use geo_nd::Vector;
 
 use crate::Vec3;
@@ -87,7 +88,7 @@ use crate::Vec3;
 /// * 6 subcubes = 37.1 degrees
 /// * 7 subcubes = 43.3 degrees
 /// * 8 subcubes = 49.5 degrees
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Subcube(u32);
 
 //ip Subcube
