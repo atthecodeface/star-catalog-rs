@@ -1,4 +1,3 @@
-
 use geo_nd::Vector;
 
 use crate::Vec3;
@@ -94,6 +93,8 @@ pub struct Subcube(u32);
 //ip Subcube
 impl Subcube {
     const HALF_ELE_PER_SIDE: usize = 16;
+    // const HALF_ELE_PER_SIDE: usize = 128;
+
     //cp ELE_PER_SIDE
     /// The number of subdivisions per dimension of the (-1,1) cube
     /// that produces the subcubes
@@ -120,6 +121,18 @@ impl Subcube {
     /// the Subcube (although some such stars may be in a neighboring
     /// subcube)
     pub const SUBCUBE_RADIUS: f64 = 1.7321 * (Self::SUBCUBE_SIZE / 2.0);
+
+    /// The maximum angle between any star in a subcube and the center vector of
+    /// the subcube is half the angle subtended by the subcube, which is
+    /// atan2(SUBCUBE_RADIUS, distance to subcube centre)
+    ///
+    /// The minimum distance from the origin to the subcube centre, given the
+    /// subcube touches the unit circle, is 1.0 minus the subcube radius
+    ///
+    /// Hence the angle is no larger than atan2(SUBCUBE_RADIUS, 1.0-SUBCUBE_RADIUS)
+    pub fn half_max_angle_subtended() -> f64 {
+        Self::SUBCUBE_RADIUS.atan2(1.0 - Self::SUBCUBE_RADIUS)
+    }
 
     //fi index_of_coord
     /// Get the subcube index of a coordinate
