@@ -872,23 +872,17 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
             for s in star_iter {
                 image_view.draw_star(s);
             }
-            for (_c, s) in star_catalog::constellations::NORTHERN_HEMISPHERE {
-                let mut last = None;
-                for id in s.iter() {
-                    if *id == 0 {
-                        last = None;
-                        continue;
-                    }
-                    if let Some(index) = catalog.find_sorted(*id) {
-                        if let Some(l) = last {
-                            image_view.draw_line_between_stars(
-                                [155, 255, 255, 0].into(),
-                                &catalog[l],
-                                &catalog[index],
-                            );
-                        }
-                        last = Some(index);
-                    }
+            for c in star_catalog::constellations::NORTHERN_HEMISPHERE {
+                let Some(inst) = c.instructions(&catalog, 0) else {
+                    continue;
+                };
+
+                for (n, pts) in inst {
+                    image_view.draw_line_between_vectors(
+                        [155, 255, 255, 0].into(),
+                        &pts[0],
+                        &pts[n - 1],
+                    );
                 }
             }
         }

@@ -289,19 +289,26 @@ impl ImageView {
         }
     }
 
-    //mp draw_line_between_stars
+    /// Draw a line between two vectors
+    ///
+    ///
+    pub fn draw_line_between_vectors(&mut self, c: Rgba<u8>, s0: &[f64; 3], s1: &[f64; 3]) {
+        let s0: Vec3 = s0.into();
+        // Get q = quaternion that maps s0 to [1,0,0], and s1 to [c,s,0]
+        let up = s0.cross_product(s1).normalize();
+        let q = Quat::of_axis_angle(&[1., 0., 0.], std::f64::consts::PI / 2.0)
+            * Quat::of_axis_angle(&[0., -1., 0.], std::f64::consts::PI / 2.0)
+            * Quat::look_at(&s0, &up);
+        let angle = s0.dot(s1).acos();
+        // draw circle needs quat to map [1,0,0] to s0, and [c,s,0] to map to
+        self.draw_circle(c, q.conjugate(), angle);
+    }
+
     /// Draw a line between two stars
     ///
     ///
     pub fn draw_line_between_stars(&mut self, c: Rgba<u8>, s0: &Star, s1: &Star) {
-        // Get q = quaternion that maps s0 to [1,0,0], and s1 to [c,s,0]
-        let up = s0.vector.cross_product(s1.vector()).normalize();
-        let q = Quat::of_axis_angle(&[1., 0., 0.], std::f64::consts::PI / 2.0)
-            * Quat::of_axis_angle(&[0., -1., 0.], std::f64::consts::PI / 2.0)
-            * Quat::look_at(&s0.vector, &up);
-        let angle = s0.cos_angle_between(s1).acos();
-        // draw circle needs quat to map [1,0,0] to s0, and [c,s,0] to map to
-        self.draw_circle(c, q.conjugate(), angle);
+        self.draw_line_between_vectors(c, s0.vector(), s1.vector());
     }
 
     //mp draw_circle
