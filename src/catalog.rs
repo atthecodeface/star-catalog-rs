@@ -440,26 +440,15 @@ impl Catalog {
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
 
-        let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
-        let max_cos = max_angle.cos();
-        let max_subcube_cos = (max_angle + subcube_max_angle).cos();
-        let subcube_range = (max_angle / subcube_max_angle).trunc() as usize + 3;
-
-        // Run through all the supplied subcubes
+        // The maximum angle between the vector and stars to return is max_angle
+        //
+        // The maximum angle between any star in a subcube and the vector of the subcube is half the angle subtended by the subcube, which is asin(sqrt(3)*HALF_SUBCUBE_SIDE / 1)
+        //
+        // Hence the maximum angle between the vector and the subcube containing stars within max_angle is max_angle PLUS this half-angle-subtended-by-subcube
+        let max_subcube_cos = (max_angle + Subcube::half_max_angle_subtended()).cos();
         let mut result = vec![];
-        let subcubes = Subcube::of_vector(vector).iter_range(subcube_range);
-        let vector: Vec3 = (*vector).into();
-        for sub in subcubes {
-            if self[sub].is_empty() {
-                continue;
-            }
-            let Some(c) = sub.cos_angle_on_sphere(&vector) else {
-                continue;
-            };
-            if c < max_subcube_cos {
-                continue;
-            }
-
+        let max_cos = max_angle.cos();
+        for sub in Subcube::iter_sphere_within_cos_of_vector(vector, max_subcube_cos) {
             for index in self[sub].iter() {
                 let star = &self[*index];
                 let c = star.vector.dot(&vector);
@@ -476,6 +465,8 @@ impl Catalog {
     }
 
     /// Find a triangle of stars given the visual angles between them
+    ///
+    /// This uses the three angles in the [StarTriangleSearch] - the angles between each pair of three triangles
     ///
     /// Needs data to have been derived for the Catalog
     #[track_caller]
@@ -507,7 +498,7 @@ impl Catalog {
     ///
     /// Needs data to have been derived for the Catalog
     ///
-    /// This takes three angles - the angles between each pair of three triangles
+    /// This uses the three angles in the [StarTriangleSearch] - the angles between each pair of three triangles
     ///
     /// For each pair it generates an angle range that it will look for
     /// candidate star pairs; it turns this into a range of cosines for each
@@ -703,7 +694,7 @@ impl Catalog {
         true
     }
 
-    /// Call a function for every triangle of stars given the visual angles between them
+    /// Finds the best star mappings for
     ///
     /// Needs data to have been derived for the Catalog
     ///
