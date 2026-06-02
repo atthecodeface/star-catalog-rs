@@ -523,7 +523,7 @@ impl Catalog {
 
         // Find the range of subcube centre angles that are allowed for each of the triangle angles
         let subcube_max_angle = 2.0 * (Subcube::SUBCUBE_RADIUS).asin();
-        let subcube_angle_ranges: Vec<(f64, f64)> = search
+        let subcube_cos_angle_ranges: Vec<(f64, f64)> = search
             .angles_to_find
             .iter()
             .map(|a| {
@@ -533,9 +533,6 @@ impl Catalog {
                         .min(std::f64::consts::PI / 2.),
                 )
             })
-            .collect();
-        let subcube_cos_angle_ranges: Vec<(f64, f64)> = subcube_angle_ranges
-            .iter()
             .map(|(min, max)| (max.cos(), min.cos()))
             .collect();
 
