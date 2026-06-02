@@ -1,8 +1,8 @@
 use std::error::Error;
 
-use geo_nd::FArray;
-use star_catalog::{Catalog, hipparcos};
-use star_catalog::{StarTriangleMatch, StarTriangleSearch, Subcube};
+use geo_nd::{FArray, Vector};
+
+use star_catalog::{Catalog, StarTriangleMatch, StarTriangleSearch, Subcube, Vec3, hipparcos};
 
 #[test]
 fn test_find_stars() -> Result<(), Box<dyn Error>> {
@@ -229,9 +229,9 @@ fn test_find_caph() -> Result<(), Box<dyn Error>> {
     let a01 = geo_nd::vector::dot(&img_vectors[0], &img_vectors[1]).acos() * 180.0 / 3.1415926;
     let a12 = geo_nd::vector::dot(&img_vectors[1], &img_vectors[2]).acos() * 180.0 / 3.1415926;
     let a20 = geo_nd::vector::dot(&img_vectors[2], &img_vectors[0]).acos() * 180.0 / 3.1415926;
-    eprintln!("{a01} {a12} {a20}");
+    eprintln!("Angles between the search vectors (in degres) {a01} {a12} {a20}");
 
-    let s = Subcube::iter_all();
+    let s = Subcube::iter_sphere();
 
     let max_angle_delta = 0.3 / 180.0 * 3.14159;
     let (finished, mut results) =
@@ -276,5 +276,55 @@ fn test_find_caph() -> Result<(), Box<dyn Error>> {
     }
     eprintln!("Was the desired answer found? {found}");
     assert!(found, "Desired star set was not found");
+    Ok(())
+}
+
+// Caph is HIP 746, in Cassiopeia; Epsilon Cassiopeia (the furthest from Capg) is HIP 8886
+//
+// For magnitude 5, there are 33 stars as close or closer to Caph (including itself...) as HIP 8886
+#[cfg(feature = "hipp_bright")]
+#[test]
+fn test_find_stars_around_caph() -> Result<(), Box<dyn Error>> {
+    let magnitude = 5.0;
+    let mut catalog = Catalog::load_catalog("hipp_bright", magnitude)?;
+    catalog.sort();
+    catalog.derive_data();
+
+    let caph = &catalog[catalog.find_id_or_name("746")?];
+    assert_eq!(caph.id(), 746);
+    let caph_v: Vec3 = caph.vector().into();
+
+    // Look for all stars with 13.5 degrees of Caph (angle between Caph and HIP8886 is 13.261+ degrees)
+    let max_angle = 0.23561944901923448;
+    let mut found_hip_8886 = false;
+    for s in catalog.find_stars_around(caph.vector(), max_angle) {
+        found_hip_8886 |= catalog[s].id() == 8886;
+        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+    }
+    assert!(found_hip_8886);
+    assert_eq!(
+        catalog
+            .find_stars_around(caph.vector(), max_angle)
+            .iter()
+            .count(),
+        33
+    );
+
+    // Should not find HIP 8886 with tighter angle delta
+    let max_angle = max_angle * 0.95;
+    let mut found_hip_8886 = false;
+    for s in catalog.find_stars_around(caph.vector(), max_angle) {
+        found_hip_8886 |= catalog[s].id() == 8886;
+        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+    }
+    assert!(!found_hip_8886);
+    assert_eq!(
+        catalog
+            .find_stars_around(caph.vector(), max_angle)
+            .iter()
+            .count(),
+        28
+    );
+
     Ok(())
 }

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 
 use geo_nd::Vector;
@@ -62,5 +63,83 @@ fn test_all() -> Result<(), Box<dyn Error>> {
         c,
         Subcube::ELE_PER_SIDE * Subcube::ELE_PER_SIDE * Subcube::ELE_PER_SIDE
     );
+    Ok(())
+}
+
+#[test]
+fn test_iter_sphere() -> Result<(), Box<dyn Error>> {
+    let all_subcubes: Vec<Subcube> = Subcube::iter_all().collect();
+    let num_maybe_on_sphere = all_subcubes.iter().filter(|s| s.may_be_on_sphere()).count();
+    let mut sphere_subcubes = HashSet::new();
+    for s in Subcube::iter_sphere() {
+        let (x, y, z) = s.into();
+        if x < 16 && y < 16 && z < 16 {
+            eprintln!("{x},{y},{z}");
+        }
+        let inserted = sphere_subcubes.insert(s);
+        assert!(
+            inserted,
+            "There should be no duplicates in the sphere subcube iterator"
+        );
+    }
+    // Print out any subcubes that maybe on the sphere (in all) that this has not detected
+    //
+    // If there are any, then this has failed
+    let mut num_on_sphere_missed = 0;
+    for s in all_subcubes.iter() {
+        if s.may_be_on_sphere() != sphere_subcubes.contains(s) {
+            num_on_sphere_missed += 1;
+            let (x, y, z) = s.into();
+            if x < 16 && y < 16 && z < 16 {
+                if s.may_be_on_sphere() {
+                    eprintln!("Sphere subcubes does not contain {x},{y},{z} as it should");
+                } else {
+                    eprintln!("Sphere subcubes contains {x},{y},{z} when it should not");
+                }
+            }
+        }
+    }
+    // Check that the *number* match
+    assert_eq!(
+        sphere_subcubes.len(),
+        num_maybe_on_sphere,
+        "Expected the number of subcubes truly that maybe on the sphere to match the number returned from the iterator"
+    );
+    assert_eq!(
+        num_on_sphere_missed, 0,
+        "Expected to have missed no subcubes that are maybe on the sphere in 'all'"
+    );
+    Ok(())
+}
+
+#[test]
+fn test_iter_sphere_of_vector() -> Result<(), Box<dyn Error>> {
+    let sphere_subcubes: HashSet<Subcube> = Subcube::iter_sphere().collect();
+    let tests: &[(Vec3, f64)] = &[
+        ([1.0, 0.0, 0.0].into(), 0.5_f64),
+        ([1.0, 1.0, 0.0].into(), 0.05_f64),
+        ([1.0, 0.0, 1.0].into(), 0.05_f64),
+        ([1.0, 0.0, 1.0].into(), 0.75_f64),
+        ([0.3, 0.4, 1.0].into(), 0.95_f64),
+        ([1.0, 0.0, 1.0].into(), 0.15_f64),
+    ];
+    for (v, cos) in tests {
+        let mut num_outside_area = 0;
+        let v_unit = v.normalize();
+        for s in Subcube::iter_sphere_within_cos_of_vector(&v_unit, *cos) {
+            assert!(
+                sphere_subcubes.contains(&s),
+                "Subcube {s:?} is apparently not maybe on the sphere"
+            );
+            let actual_cos = v.dot(&s.center());
+            if actual_cos < *cos {
+                num_outside_area += 1;
+                eprintln!(
+                    "Probably not expecting subcube {s:?} with actual cos {actual_cos} compared to 'min' of {cos}"
+                );
+            }
+        }
+        assert_eq!(num_outside_area, 0);
+    }
     Ok(())
 }
