@@ -587,6 +587,7 @@ fn test_solar_system() {
 // timeanddate.com seems to give odd Mercury positions
 #[test]
 fn test_solar_system_2() {
+    use geo_nd::Vector;
     use std::collections::HashMap;
     let mut planets = HashMap::new();
     for (n, o) in SOLAR_SYSTEM {
