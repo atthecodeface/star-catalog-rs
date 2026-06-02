@@ -477,7 +477,7 @@ impl Catalog {
         max_candidates: usize,
     ) -> (bool, Vec<StarTriangleMatch>)
     where
-        I: Iterator<Item = Subcube>,
+        I: Iterator<Item = Subcube> + Clone,
     {
         let mut result = vec![];
         let completed_search = self.map_star_triangles(
@@ -513,7 +513,7 @@ impl Catalog {
         max_candidates: usize,
     ) -> bool
     where
-        I: Iterator<Item = Subcube>,
+        I: Iterator<Item = Subcube> + Clone,
         F: FnMut(StarTriangle) -> (),
     {
         assert!(
