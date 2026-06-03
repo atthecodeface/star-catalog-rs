@@ -43,7 +43,10 @@ STARS = 1775 1776  2026 1486  1677 1979  4069 1314  2064 1781 \
 
 .PHONY: help
 help:
-	@echo "Help goes here"
+	@echo "Use 'test_all' to run tests (on release) with a suitable set of feature sets"
+	@echo "Use 'release' to build a release image with all the features snabled"
+	@echo "Use 'cubemap' to generate a cubemap of the Hipp bright stars of magnitude 8 and above focuses on Polaris with Dubhe 'up', with a 1024-by-1024 square for each face"
+	@echo "Use 'stars_of_image' to test a set of stars on an image taken with a focal length of 23.48mm on an 18MP camera
 
 .PHONY: test_all
 test_all:
@@ -65,8 +68,8 @@ test_hipp_bright:
 release:
 	cargo build --release --features image,postcard,csv,hipp_bright
 
-.PHONY: stars_on_image
-stars_on_image:
+.PHONY: stars_of_image
+stars_of_image:
 	cargo build --release --features image,postcard,csv,hipp_bright
 	./target/release/star-catalog hipp_bright -m 6 stars_of_image -f 23.48 -W 5184 -H 3456 -a 0.3 ${STARS}
 
@@ -89,7 +92,7 @@ cubemap: release
 	# ${BINARY} hipp_bright -m 7. --names collated cubemap -W 1024 -H 1024 --output ~/test.png
 	${BINARY} hipp_bright -m 8. --names collated cubemap --star Polaris --up Dubhe --angle 90 -W 1024 -H 1024 --output ~/test.png
 
-all: release
+images: release
 	${BINARY} ${STARS} image -r 0 $(VIEW) -o winter_hexagon_0.png
 	${BINARY} ${STARS} image -r 30 $(VIEW) -o winter_hexagon_30.png
 	${BINARY} ${STARS} image -r 60 $(VIEW) -o winter_hexagon_60.png
