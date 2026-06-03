@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use clap::{ArgMatches, Command};
 use geo_nd::Vector;
+use star_catalog::constellations::DrawingOperation;
 use star_catalog::{
     Catalog, CatalogIndex, Star, StarTriangleMatch, StarTriangleSearch, Subcube, cmdline,
 };
@@ -872,17 +873,21 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
             for s in star_iter {
                 image_view.draw_star(s);
             }
+
             for c in star_catalog::hipparcos::NORTHERN_HEMISPHERE {
                 let Some(inst) = c.instructions(&catalog, 0) else {
                     continue;
                 };
 
-                for (n, pts) in inst {
-                    image_view.draw_line_between_vectors(
-                        [155, 255, 255, 0].into(),
-                        &pts[0],
-                        &pts[n - 1],
-                    );
+                for op in inst {
+                    match op {
+                        DrawingOperation::Line(pts) => image_view.draw_line_between_vectors(
+                            [155, 255, 255, 0].into(),
+                            &pts[0],
+                            &pts[1],
+                        ),
+                        _ => (),
+                    }
                 }
             }
         }

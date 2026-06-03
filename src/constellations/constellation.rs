@@ -1,4 +1,4 @@
-use super::{Drawing, PtIndex};
+use super::{Drawing, DrawingOperation, PtIndex};
 
 /// A constellation description consisting of a name, the points required (ids
 /// within the catalog it belongs to), and drawings at various levels of detail
@@ -50,11 +50,11 @@ impl<'a> Constellation<'a> {
 
     /// Iterates through the drawing instructions for a level of detail
     /// providing drawing operations to be performed
-    pub fn instructions(
-        &self,
-        catalog: &crate::Catalog,
+    pub fn instructions<'inst>(
+        &'inst self,
+        catalog: &'inst crate::Catalog,
         lod: usize,
-    ) -> Option<impl Iterator<Item = (usize, [[f64; 3]; 4])>> {
+    ) -> Option<impl Iterator<Item = DrawingOperation> + 'inst> {
         if lod >= self.drawings.len() {
             return None;
         }

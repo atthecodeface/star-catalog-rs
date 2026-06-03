@@ -221,6 +221,7 @@ pub type Quatf32 = geo_nd::QArray<f32>;
 pub type Vec3f32 = geo_nd::FArray<f32, 3>;
 
 pub use geo_nd;
+pub use geo_nd::{Quaternion, Vector};
 
 mod catalog;
 mod error;

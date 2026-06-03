@@ -11,4 +11,4 @@ mod drawing_instructions;
 pub use constellation::Constellation;
 pub use drawing::Drawing;
 pub(crate) use drawing_instructions::DrawingInstructionIterator;
-pub use drawing_instructions::{DrawingInstruction, PtIndex};
+pub use drawing_instructions::{DrawingInstruction, DrawingOperation, PtIndex};

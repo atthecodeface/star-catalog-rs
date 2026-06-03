@@ -1,33 +1,40 @@
 /// Constellations in the norhern hemisphere (Hipparcos ids)
 use crate::constellations::DrawingInstruction::*;
 use crate::constellations::{Constellation, Drawing, PtIndex};
-pub const NORTHERN_HEMISPHERE: &[Constellation] = &[
-    Constellation {
-        name: "Orion",
-        points: &[27366, 26727, 27989, 26207, 25336, 25930, 26311, 24436],
+pub const NORTHERN_HEMISPHERE: &[Constellation] = &[Constellation {
+    name: "Orion",
+    points: &[27366, 26727, 27989, 26207, 25336, 25930, 26311, 24436],
 
-        drawings: &[Drawing {
-            // Phecda -> xi -> Alula Borealis (nu) -> ?Alula Australis (eta?)
-            // xi -> upsilon -> Tania Australis (mu) -> Tania Borealis (lambda)
-            instructions: &[
-                MoveTo(PtIndex(0)),
-                DrawTo(PtIndex(1)),
-                DrawTo(PtIndex(2)),
-                DrawTo(PtIndex(3)),
-                DrawTo(PtIndex(4)),
-                DrawTo(PtIndex(5)),
-                DrawTo(PtIndex(6)),
-                DrawTo(PtIndex(7)),
-                /* */
-                MoveTo(PtIndex(1)),
-                DrawTo(PtIndex(6)),
-                DrawTo(PtIndex(5)),
-                /* */
-                MoveTo(PtIndex(2)),
-                DrawTo(PtIndex(4)),
-            ],
-        }],
-    },
+    drawings: &[Drawing {
+        // Phecda -> xi -> Alula Borealis (nu) -> ?Alula Australis (eta?)
+        // xi -> upsilon -> Tania Australis (mu) -> Tania Borealis (lambda)
+        instructions: &[
+            MoveTo(PtIndex(0)),
+            DrawTo(PtIndex(1)),
+            DrawTo(PtIndex(2)),
+            DrawTo(PtIndex(3)),
+            DrawTo(PtIndex(4)),
+            DrawTo(PtIndex(5)),
+            DrawTo(PtIndex(6)),
+            DrawTo(PtIndex(7)),
+            /* */
+            MoveTo(PtIndex(1)),
+            DrawTo(PtIndex(6)),
+            DrawTo(PtIndex(5)),
+            /* */
+            MoveTo(PtIndex(2)),
+            DrawTo(PtIndex(4)),
+            /* */
+            LookAt(PtIndex(0), PtIndex(1), 100),
+            SetXY(0, 10, 10),
+            DrawXY(2, 50, 10),
+            DrawXY(2, 50, 50),
+            DrawXY(2, 10, 50),
+            DrawXY(2, 10, 10),
+        ],
+    }],
+}];
+pub const NOT_NORTHERN_HEMISPHERE: &[Constellation] = &[
     Constellation {
         name: "Ursa Major",
         points: &[
