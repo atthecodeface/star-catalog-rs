@@ -872,7 +872,7 @@ fn cubemap(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> 
             for s in star_iter {
                 image_view.draw_star(s);
             }
-            for c in star_catalog::constellations::NORTHERN_HEMISPHERE {
+            for c in star_catalog::hipparcos::NORTHERN_HEMISPHERE {
                 let Some(inst) = c.instructions(&catalog, 0) else {
                     continue;
                 };
