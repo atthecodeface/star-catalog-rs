@@ -1,4 +1,6 @@
-//!
+//! This provides a [Constellation] class that describes constellations within a
+//! catalog, using the 'id' values of the stars in the catalog, and it provides
+//! for drawing of the constellations at various levels of detail
 //!
 //! Constants that represent some common constellations, using Hipparcos numbers for the stars
 

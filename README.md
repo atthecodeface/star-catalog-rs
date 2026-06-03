@@ -70,6 +70,8 @@ The subcommands supported are:
 
  * triangle: Find a triangle of stars from three angles (within an angular delta)
 
+ * stars_of_image: Find stars given points on an image from a rectilinear camera
+
 If no subcommand is provided then the command just prints out the
 number of stars in the catalog as read.
 
@@ -134,6 +136,31 @@ required angles, plus or minus the angular delta.
 The result is a list of three triangle IDs (and the angles between the stars)
 
 The maximum angle supported for a search is 90 degrees.
+
+### Subcommand `stars_of_image`
+
+This requires a list of (x,y) image values for points within an image taken by a
+camera with a rectilinear lens, of the coordinates of centers of stars within
+the image. This list is provides as lists of floating point values <x> <y> (i.e.
+the application expects an even number of floating point values). The
+coordinates should be relative to an origin at the top left of the image.
+
+This uses the `--focal_length` argument to provide the focal length of the
+camera lens the image was taken with (as a 35mm equivalent).
+
+It uses `--width` and `--height` to supply the width and height of the image.
+
+It uses the `--angle` argument to supply a delta to apply to each of
+these (the maximum error in the angles).
+
+This will search the catalog for a triangle of stars that match the first three
+image points mapped to camera-relative unit direction vectors; then it searches
+(for each candidate triangle) for stars that would be close to the image points
+mapped to world unit vectors - using the candidate's calculated camera
+orientation - and determines the 'mapping' of the image points to stars.
+
+Any mapping that maps the image points suitably accurately to stars is then
+displayed.
 
 ### Subcommand `image`
 

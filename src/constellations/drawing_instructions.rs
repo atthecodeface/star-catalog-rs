@@ -1,3 +1,13 @@
+// To do
+//
+// Convert iterator to return line, curve, set style instead of usize + pts; probably pass in points array
+//
+// Add ability to 'look at' with 'up'
+//
+// Add ability to move to position (u16,16) and draw to position (u16,u16)
+//
+// Add ability to set style
+
 /// Index into the points of a constellation
 #[derive(Clone, Copy)]
 pub struct PtIndex(pub u8);

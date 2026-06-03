@@ -1,3 +1,15 @@
+# Release 0.3.1 (2026-06-02)
+
+- Added StarTriangleSearch, StarTriangleMatch, StarTriangleMatchMapping, StarTriangleMatchMappingSet
+- Added Subcube sphere iterator, and sphere close to vector iterator
+- Changed catalog search best_mappings to clone its iterator rather than use a range, to permit bounded searches for stars within an image
+- Changed iterator use and methods that return subcube iterators to be impl Iterator<Item = Subcube> + Clone
+- Added Hash/Ord/Eq etc implementations to Subcube
+- Improved tests
+- Added initial 'orbit' code
+- Changed constellations to provide drawing instructions
+- Moved specific constellations into hipparcos
+
 # Release 0.2.1 (2026-05-05)
 
 - Moved to Rust edition 2024; maintenance
