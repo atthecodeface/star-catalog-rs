@@ -439,6 +439,7 @@ impl Catalog {
             self.has_derived_data(),
             "Attempt to find a star in the Catalog that has not has its data derived"
         );
+        let vector: Vec3 = vector.into();
 
         // The maximum angle between the vector and stars to return is max_angle
         //
@@ -448,7 +449,7 @@ impl Catalog {
         let max_subcube_cos = (max_angle + Subcube::half_max_angle_subtended()).cos();
         let mut result = vec![];
         let max_cos = max_angle.cos();
-        for sub in Subcube::iter_sphere_within_cos_of_vector(vector, max_subcube_cos) {
+        for sub in Subcube::iter_sphere_within_cos_of_vector(&vector, max_subcube_cos) {
             for index in self[sub].iter() {
                 let star = &self[*index];
                 let c = star.vector.dot(&vector);

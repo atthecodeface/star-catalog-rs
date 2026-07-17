@@ -473,7 +473,8 @@ This is in degrees, and defaults to 0.
 
         let cos_angle = angle.cos();
         for s in catalog.iter_stars() {
-            if v.dot(s.vector()) >= cos_angle {
+            let s_vec: Vec3 = s.vector().into();
+            if v.dot(s_vec) >= cos_angle {
                 ids.push(s.id());
             }
         }
@@ -630,16 +631,32 @@ fn find_triangle(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::E
 }
 
 fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::Error> {
+    /// Vector of image takes an (x,y) in a frame of size (w,h) (with image
+    /// coordinate system +XY being down-right, origin top left) assuming it is
+    /// centred half-way, and a mm_equiv for the lens (for 35mm frame, i.e.
+    /// tan_hfovh = 18/mm_equiv) and produces a vector where the centre of the
+    /// image is at (0,0,-1), +X in the image is (+,0,0); +Y (down) in the image is (0,-,0)
+    ///
+    /// This is like holding the image at arm's length, upright, then XYZ is
+    /// right, up, and out of the image as per standard GL processing
     fn vector_of_img(w: usize, h: usize, mm_equiv: f64, x: usize, y: usize) -> [f64; 3] {
         //  tan_hfovh = 18 / mm_equiv;
         //  fovh = 2 * Math.atan(tan_hfovh);
         //  tan_hfovh = Math.tan(this.fovh / 2);
 
+        // Calculate xf,yf where (0,0) is centre, (-1,0) is left middle, (0,-1/ar) is middle top
+        //
+        // +x is right, +y is down
         let w = w as f64;
         let h = h as f64;
         // -h/w < yf < h/w, for yf in the height of the image
         let xf = ((x as f64) - w / 2.0) / (w / 2.0);
         let yf = ((y as f64) - h / 2.0) / (w / 2.0);
+
+        // Sensor roll (anticlockwise) is -atan(y/x)
+        // Sensor rf is distance (with 1 being width of sensor)
+        let sensor_rf = (xf * xf + yf * yf).sqrt();
+        let roll = -yf.atan2(xf);
 
         // rectilinear:
         //  sensor_rf = R tan (world_yaw)
@@ -650,14 +667,11 @@ fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::
         //  hence R = mm_equiv / 18.0
         //  and hence
         //  world_yaw = atan(sensor_rf * 18 / mm_equiv)
-        let sensor_rf = (xf * xf + yf * yf).sqrt();
-        let roll = yf.atan2(xf);
-
         let world_yaw = (sensor_rf * 18.0 / mm_equiv).atan();
         [
-            world_yaw.cos(),
-            -world_yaw.sin() * roll.cos(),
-            -world_yaw.sin() * roll.sin(),
+            world_yaw.sin() * roll.cos(),
+            world_yaw.sin() * roll.sin(),
+            -world_yaw.cos(),
         ]
     }
 
@@ -688,6 +702,9 @@ fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::
     for xy in points.as_chunks::<2>().0 {
         img_vectors.push(vector_of_img(w, h, mm_equiv, *xy[0], *xy[1]).into());
     }
+    for i in img_vectors.iter() {
+        eprintln!("{i:.4?}");
+    }
 
     let a01 = geo_nd::vector::dot(&img_vectors[0], &img_vectors[1]).acos() * 180.0 / 3.1415926;
     let a12 = geo_nd::vector::dot(&img_vectors[1], &img_vectors[2]).acos() * 180.0 / 3.1415926;
@@ -717,7 +734,7 @@ fn stars_of_image(catalog: Catalog, matches: &ArgMatches) -> Result<(), anyhow::
             r.initial_match.quaternion(),
         );
         println!(
-            "mean:{:.4} sd:{:.4} q:{:?}",
+            "mean:{:.4} sd:{:.4} q:{}",
             r.angle_mean * 180.0 / 3.14159265,
             r.quality * 180.0 / 3.14159265,
             r.quaternion()

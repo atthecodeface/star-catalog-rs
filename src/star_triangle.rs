@@ -47,7 +47,7 @@ impl std::convert::From<(CatalogIndex, CatalogIndex, CatalogIndex)> for StarTria
         Self(value.0, value.1, value.2)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StarMatchMapping {
     pub star: CatalogIndex,
     pub img_index: usize,
@@ -62,6 +62,7 @@ pub struct StarMatchMapping {
     pub img_vector: Vec3,
     pub star_vector: Vec3,
 }
+
 #[derive(Debug)]
 pub struct StarMatchMappingSet {
     pub initial_match: StarTriangleMatch,
@@ -70,6 +71,8 @@ pub struct StarMatchMappingSet {
     /// Some average of quaternions for pairs of mappings, usually derived from
     /// weighted averages of pairs of mappings from the array taking each
     /// mapping at index N with that at N+len/2
+    ///
+    /// These map image space to star space (i.e. star = q.apply(img))
     pub q: Quat,
     /// Mean of angle deltas (in radians) between the mapped stars and their
     /// img_vector after 'q' is applied
@@ -130,7 +133,7 @@ impl StarMatchMappingSet {
         let mut angle_mean = 0.0;
         let mut quality = 0.0;
         for m in &mut self.mappings {
-            let v = self.q.apply3_arr(&m.img_vector);
+            let v = self.q.apply3(&m.img_vector);
             let cos_star_angle_delta = m.star_vector.dot(&v);
             // For small angles, cos = 1 - x^2/2; ln(cos) is negative (with gradient 1 at cos=1, angle=0)
             //

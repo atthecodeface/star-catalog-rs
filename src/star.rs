@@ -51,10 +51,10 @@ pub struct Star {
     /// [Star].
     pub(crate) id: usize,
 
-    /// The right ascension of the star in radians
+    /// The right ascension of the star in radians (in range +-pi)
     pub(crate) ra: f64,
 
-    /// The declination of the star in radians
+    /// The declination of the star in radians (in range +-pi/2)
     pub(crate) de: f64,
 
     /// The approximate distance to the star in lightyears
@@ -98,50 +98,42 @@ impl Star {
         4600.0 * (1.0 / (1.7 + 0.92 * self.bv) + 1.0 / (0.62 + 0.92 * self.bv))
     }
 
-    //ap id
     /// Get the id
     pub fn id(&self) -> usize {
         self.id
     }
 
-    //ap ra
-    /// Get the right ascension of the star
+    /// Get the right ascension of the star in radians (in range +-pi)
     pub fn ra(&self) -> f64 {
         self.ra
     }
 
-    //ap de
-    /// Get the declination of the star
+    /// Get the declination of the star in radians (in range +-pi/2)
     pub fn de(&self) -> f64 {
         self.de
     }
 
-    //ap distance
-    /// Get the distance of the star
+    /// Get the distance of the star in light-years
     pub fn distance(&self) -> f32 {
         self.ly
     }
 
-    //ap magnitude
     /// Get the magnitude of the star
     pub fn magnitude(&self) -> f32 {
         self.mag
     }
 
-    //ap bv
     /// Get the bv of the star
     pub fn bv(&self) -> f32 {
         self.bv
     }
 
-    //ap vector
     /// Get the unit vector direction of the star
     pub fn vector(&self) -> &[f64; 3] {
         self.vector.as_ref()
     }
 
-    //ap subcube
-    /// Get the subcube
+    /// Get the sphere-subcube that the star is in
     pub fn subcube(&self) -> Subcube {
         self.subcube
     }

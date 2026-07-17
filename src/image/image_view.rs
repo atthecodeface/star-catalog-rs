@@ -294,12 +294,13 @@ impl ImageView {
     ///
     pub fn draw_line_between_vectors(&mut self, c: Rgba<u8>, s0: &[f64; 3], s1: &[f64; 3]) {
         let s0: Vec3 = s0.into();
+        let s1: Vec3 = s1.into();
         // Get q = quaternion that maps s0 to [1,0,0], and s1 to [c,s,0]
-        let up = s0.cross_product(s1).normalize();
+        let up = s0.cross_product(&s1).normalize();
         let q = Quat::of_axis_angle(&[1., 0., 0.], std::f64::consts::PI / 2.0)
             * Quat::of_axis_angle(&[0., -1., 0.], std::f64::consts::PI / 2.0)
             * Quat::look_at(&s0, &up);
-        let angle = s0.dot(s1).acos();
+        let angle = s0.dot(&s1).acos();
         // draw circle needs quat to map [1,0,0] to s0, and [c,s,0] to map to
         self.draw_circle(c, q.conjugate(), angle);
     }
