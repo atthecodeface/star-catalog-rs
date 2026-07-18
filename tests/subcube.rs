@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::error::Error;
 
-use geo_nd::Vector;
+use geo_nd::{FArray, Vector};
 
 use star_catalog::{Subcube, Vec3};
 
@@ -131,7 +131,8 @@ fn test_iter_sphere_of_vector() -> Result<(), Box<dyn Error>> {
                 sphere_subcubes.contains(&s),
                 "Subcube {s:?} is apparently not maybe on the sphere"
             );
-            let actual_cos = v.dot(&s.center());
+            let s_vec: FArray<f64, 3> = s.center().into();
+            let actual_cos = v.dot(s_vec);
             if actual_cos < *cos {
                 num_outside_area += 1;
                 eprintln!(

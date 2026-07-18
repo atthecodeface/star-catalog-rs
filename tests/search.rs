@@ -299,7 +299,8 @@ fn test_find_stars_around_caph() -> Result<(), Box<dyn Error>> {
     let mut found_hip_8886 = false;
     for s in catalog.find_stars_around(caph.vector(), max_angle) {
         found_hip_8886 |= catalog[s].id() == 8886;
-        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+        let s_vec: FArray<f64, 3> = catalog[s].vector().into();
+        assert!(caph_v.dot(s_vec) >= max_angle.cos());
     }
     assert!(found_hip_8886);
     assert_eq!(
@@ -315,7 +316,8 @@ fn test_find_stars_around_caph() -> Result<(), Box<dyn Error>> {
     let mut found_hip_8886 = false;
     for s in catalog.find_stars_around(caph.vector(), max_angle) {
         found_hip_8886 |= catalog[s].id() == 8886;
-        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+        let s_vec: FArray<f64, 3> = catalog[s].vector().into();
+        assert!(caph_v.dot(s_vec) >= max_angle.cos());
     }
     assert!(!found_hip_8886);
     assert_eq!(
@@ -346,7 +348,8 @@ fn test_find_stars_around_caph_all_bright() -> Result<(), Box<dyn Error>> {
     let mut found_hip_8886 = false;
     for s in catalog.find_stars_around(caph.vector(), max_angle) {
         found_hip_8886 |= catalog[s].id() == 8886;
-        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+        let s_vec: FArray<f64, 3> = catalog[s].vector().into();
+        assert!(caph_v.dot(s_vec) >= max_angle.cos());
     }
     assert!(found_hip_8886);
     assert_eq!(
@@ -362,7 +365,8 @@ fn test_find_stars_around_caph_all_bright() -> Result<(), Box<dyn Error>> {
     let mut found_hip_8886 = false;
     for s in catalog.find_stars_around(caph.vector(), max_angle) {
         found_hip_8886 |= catalog[s].id() == 8886;
-        assert!(caph_v.dot(catalog[s].vector()) >= max_angle.cos());
+        let s_vec: FArray<f64, 3> = catalog[s].vector().into();
+        assert!(caph_v.dot(s_vec) >= max_angle.cos());
     }
     assert!(!found_hip_8886);
     assert_eq!(

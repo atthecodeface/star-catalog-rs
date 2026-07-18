@@ -20,11 +20,12 @@ repository = "https://github.com/atthecodeface/star-catalog-rs"
 [features]
 # default = ["postcard"]
 # Enable this for full editting experience
-default = ["postcard", "image", "hipp_bright"]
+default = ["postcard", "image", "hipp_bright", "hipp_full"]
 image = ["dep:image"]
 csv = ["dep:csv"]
 postcard = ["dep:postcard"]
 hipp_bright = ["dep:postcard"]
+hipp_full = ["dep:postcard"]
 
 [dependencies]
 num-traits = "0.2.19"

@@ -145,6 +145,11 @@ impl Catalog {
                     catalog = postcard::from_bytes(hipparcos::HIPP_BRIGHT_PST)?;
                     catalog.retain(move |s, _n| s.brighter_than(magnitude));
                 }
+                #[cfg(feature = "hipp_full")]
+                if catalog_filename.as_ref().as_os_str().as_encoded_bytes() == b"hipp_full" {
+                    catalog = postcard::from_bytes(hipparcos::HIPP_FULL_PST)?;
+                    catalog.retain(move |s, _n| s.brighter_than(magnitude));
+                }
                 if catalog.is_empty() {
                     return Err(Error::UnknownCatalog);
                 }

@@ -43,8 +43,8 @@ This can be a filename with a '.json' extension, or (if enabled with
 feature csv) a '.csv' extension, or (if enabled with feature postcard)
 a '.pst' extension.
 
-Alterrnatively it can be a built-in catalog if no filename extensionis
-provide (if enabled with feature hipp_bright) 'hipp_bright'",
+Alterrnatively it can be a built-in catalog if no filename extension is
+provide (if enabled with feature hipp_bright then 'hipp_bright', or 'hipp_full' similarly)",
     );
 
     let cmd = cmdline::add_names_arg(

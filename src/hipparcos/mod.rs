@@ -17,6 +17,9 @@ pub use constellations::NORTHERN_HEMISPHERE;
 #[cfg(feature = "hipp_bright")]
 pub const HIPP_BRIGHT_PST: &[u8] = include_bytes!("hipp_bright.pst");
 
+#[cfg(feature = "hipp_full")]
+pub const HIPP_FULL_PST: &[u8] = include_bytes!("hipp_full.pst");
+
 //a Imports
 #[cfg(feature = "csv")]
 use crate::{Catalog, Star};

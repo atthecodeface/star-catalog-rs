@@ -24,11 +24,12 @@
 //! in the Hipparcos database. Note that some IAU named stars are
 //! *not* in the Hipparcos database.
 //!
-//! If the `hipp_bright` feature is used then the Hipparcos catalog
-//! stars of magnitude 8.0 or brighter are included (41,013 stars) as
-//! a postcard string, as [hipparcos::HIPP_BRIGHT_PST]; also 430 'common'
-//! names of these stars are included as
-//! [hipparcos::HIP_COLLATED_ALIASES].
+//! If the `hipp_bright` feature is used then the Hipparcos catalog stars of
+//! magnitude 8.0 or brighter are included (41,013 stars) as a postcard string,
+//! as [hipparcos::HIPP_BRIGHT_PST]; if the `hipp_full` feature is used then all
+//! of the Hipparcos catalog stars are included (116,553 stars) as a postcard
+//! string, as [hipparcos::HIPP_FULL_PST]; also 430 'common' names of these
+//! stars are included as [hipparcos::HIP_COLLATED_ALIASES].
 //!
 //! # [Catalog], [Star], cube and [Subcube]
 //!
@@ -196,6 +197,11 @@
 //!    * Allows reading and writing catalog files in Postcard format
 //!
 //! * hipp_bright
+//!
+//!    * Optional, compatible with Rust stable
+//!    * Includes constants for the Hipparcos catalog
+//!
+//! * hipp_full
 //!
 //!    * Optional, compatible with Rust stable
 //!    * Includes constants for the Hipparcos catalog
